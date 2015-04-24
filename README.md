@@ -1,6 +1,8 @@
 # ESD-Decrypter
 ESD Decrypter Rewrite Script
 
+WIP - Don't use it until I mark a commit with the word STABLE
+
 ## Credit for the original script and the tools used :
 qad - decryption program
 
