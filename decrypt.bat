@@ -193,6 +193,7 @@ IF %ERRORTEMP% NEQ 0 (
 rmdir /s /q ISOFOLDER\
 IF EXIST "!ESD!.bak" (
 	del /f /q "!ESD!" >nul 2>&1
+	for /f "delims=" %%f in ("!ESD!") do ren "!ESD!.bak" %%~nf.esd
 )
 echo.
 echo Press any key to exit.
@@ -276,6 +277,7 @@ exit /b
 if exist ISOFOLDER\nul rmdir /s /q ISOFOLDER\
 IF EXIST "!ESD!.bak" (
 	del /f /q "!ESD!" >nul 2>&1
+	for /f "delims=" %%f in (!ESD!) do ren "!ESD!.bak" %%~nf.esd
 )
 exit /b
 
