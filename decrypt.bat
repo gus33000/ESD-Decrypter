@@ -176,12 +176,13 @@ set mm=%date:~5,2%
 set yyyy=%date:~0,4%
 set time=%date:~11,5%
 reg copy "HKCU\Control Panel\International-Temp" "HKCU\Control Panel\International" /f >nul
+if not exist %OUT%\nul mkdir %OUT%
 bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %OUT%\%DVDISO%
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 (
-	echo.
 	echo [Critical] Errors were reported during ISO creation.
-	pause >nul
+	goto error
+	exit /b
 )
 rmdir /s /q ISOFOLDER\
 IF EXIST "%ESD%.bak" (
@@ -194,24 +195,24 @@ pause >nul
 exit /b
 
 :Decrypt <ESD> {key}
-if not exist "%1.bak" (
+if not exist "%~1.bak" (
 	echo [Info] Backing up original esd file...
-	copy "%1" "%1.bak" >nul
+	copy "%~1" "%1.bak" >nul
 )
 echo [Info] Running Decryption program...
-bin\esddecrypt.exe "%1" 2>"%temp%\esddecrypt.log"&&exit /b
-bin\esddecrypt.exe "%1" %2 &&exit /b
+bin\esddecrypt.exe "%~1" 2>"%temp%\esddecrypt.log"&&exit /b
+bin\esddecrypt.exe "%~1" %2 &&exit /b
 type "%temp%\esddecrypt.log"
 echo [Critical] Errors were reported during ESD decryption.
 goto error
 exit /b
 
 :PREPARE <ESD>
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
+for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
+for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
+for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
+for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
+for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
 
 set lang=%langid:~0,2%
 if /i %langid%==en-gb set lang=en-gb
