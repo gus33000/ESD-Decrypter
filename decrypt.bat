@@ -298,7 +298,7 @@ echo         /Output ^<Folder^> where Folder is the folder which will contain th
 echo.
 echo      Options marked with (*) are required
 echo.
-echo      <ESD> <KEY>
+echo      ^<ESD^> ^<KEY^>
 echo.
 echo      where ESD is the path to the ESD file to process (*)
 echo      where Key is the complete Cryptographic RSA key used to decrypt the ESD file
