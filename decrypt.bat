@@ -186,7 +186,7 @@ IF %ERRORTEMP% NEQ 0 (
 rmdir /s /q ISOFOLDER\
 IF EXIST "%ESD%.bak" (
 	del /f /q "%ESD%" >nul 2>&1
-	ren "%ESD%.bak" %ESD%
+	for %%f in (%ESD%) do ren "%ESD%.bak" %%~nf.esd
 )
 echo.
 echo Press any key to exit.
@@ -266,13 +266,17 @@ if %build% GEQ 9896 (
 exit /b
 
 :error
-
+if exist ISOFOLDER\nul rmdir /s /q ISOFOLDER\
+IF EXIST "%ESD%.bak" (
+	del /f /q "%ESD%" >nul 2>&1
+	for %%f in (%ESD%) do ren "%ESD%.bak" %%~nf.esd
+)
 exit /b
 
 :help
 echo.
 echo Usage: %~n0 
-echo             /Mode:^<Option^> ^<Options^>
+echo             /Mode:^<Mode^> ^<Options^>
 echo.
 echo             Available modes :
 echo.
