@@ -13,6 +13,11 @@ exit /B
 :gotAdmin
 pushd "%CD%"
 CD /D "%~dp0"
+set ESD=
+set MODE=
+set OUT=
+set wimlib=
+set KEY=
 title ESD to ISO Converter / Decrypter
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
