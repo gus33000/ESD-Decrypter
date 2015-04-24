@@ -86,7 +86,6 @@ set "ESD=%~2"
 set "OUT=%~3"
 if [%OUT:~-1%]==[\] set "OUT=%OUT:~0,-1%"
 set "KEY=%4"
-set "ESDN=%2"
 chcp 437 >nul
 set wimlib=%~dp0bin\wimlib-imagex.exe
 if %PROCESSOR_ARCHITECTURE%==AMD64 set wimlib=%~dp0bin\bin64\wimlib-imagex.exe
@@ -187,7 +186,7 @@ IF %ERRORTEMP% NEQ 0 (
 rmdir /s /q ISOFOLDER\
 IF EXIST "%ESD%.bak" (
 	del /f /q "%ESD%" >nul 2>&1
-	ren "%ESD%.bak" %ESDN%
+	ren "%ESD%.bak" %ESD%
 )
 echo.
 echo Press any key to exit.
