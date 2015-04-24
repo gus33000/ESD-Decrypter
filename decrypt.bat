@@ -99,7 +99,7 @@ setlocal EnableDelayedExpansion
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% EQU 74 call :Decrypt "%ESD%" %key%
 IF %ERRORTEMP% NEQ 0 (
-	echo %wimlib% info "%ESD%" 4
+	echo %wimlib% info "%ESDN%" 4
 	echo [Critical] The filename is missing or damaged.
 	echo [Critical] Error code : %ERRORTEMP%
 	goto error
@@ -291,6 +291,7 @@ echo.
 echo             Options marked with (*) are required
 echo.
 echo             <ESD> <KEY>
+echo.
 echo             where ESD is the path to the ESD file to process (*)
 echo             where Key is the complete Cryptographic RSA key used to decrypt the ESD file
 echo.
