@@ -13,6 +13,7 @@ exit /B
 :gotAdmin
 pushd "%CD%"
 CD /D "%~dp0"
+setlocal EnableDelayedExpansion
 set ESD=
 set MODE=
 set OUT=
@@ -85,7 +86,6 @@ call :ESD2ISO ESD "!ESD!" "%OUT%" %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> {key}
-setlocal EnableDelayedExpansion
 echo.
 set "MODE=%~1"
 set "ESD=%~2"
