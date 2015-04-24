@@ -60,8 +60,8 @@ if "%1"=="/Output" (
 )
 if not "%1"=="" goto :PARSE1
 if "%OUT%"=="" goto help
-if "%ESD%"=="" goto help
-call :ESD2ISO WIM "%ESD%" "%OUT%" %KEY%
+if "!ESD!"=="" goto help
+call :ESD2ISO WIM "!ESD!" "%OUT%" %KEY%
 exit /b
 
 :PARSE2
@@ -80,11 +80,12 @@ if "%1"=="/Output" (
 )
 if not "%1"=="" goto :PARSE1
 if "%OUT%"=="" goto help
-if "%ESD%"=="" goto help
-call :ESD2ISO ESD "%ESD%" "%OUT%" %KEY%
+if "!ESD!"=="" goto help
+call :ESD2ISO ESD "!ESD!" "%OUT%" %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> {key}
+setlocal EnableDelayedExpansion
 echo.
 set "MODE=%~1"
 set "ESD=%~2"
@@ -98,9 +99,9 @@ if not exist "%wimlib%" (
 	echo [Critical] %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
 	goto error
 )
-setlocal EnableDelayedExpansion
-%wimlib% info "%ESD%" 4 1>nul 2>nul
-IF %ERRORLEVEL% EQU 74 call :Decrypt "%ESD%" %key%
+
+%wimlib% info "!ESD!" 4 1>nul 2>nul
+IF %ERRORLEVEL% EQU 74 call :Decrypt "!ESD!" %key%
 IF %ERRORLEVEL% NEQ 0 (
 	echo [Critical] The filename is missing or damaged.
 	echo [Critical] Error code : %ERRORLEVEL%
@@ -108,12 +109,12 @@ IF %ERRORLEVEL% NEQ 0 (
 	exit /b
 )
 set ERRORTEMP=
-call :PREPARE "%ESD%"
+call :PREPARE "!ESD!"
 echo [Info] Creating Setup Media Layout...
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 echo.
-"%wimlib%" apply "%ESD%" 1 ISOFOLDER\
+"%wimlib%" apply "!ESD!" 1 ISOFOLDER\
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 (
 	echo [Critical] Errors were reported during apply.
@@ -124,7 +125,7 @@ del ISOFOLDER\MediaMeta.xml 1>nul 2>nul
 Echo.
 echo [Info] Creating boot.wim file...
 Echo.
-"%wimlib%" export "%ESD%" 2 ISOFOLDER\sources\boot.wim --compress=maximum
+"%wimlib%" export "!ESD!" 2 ISOFOLDER\sources\boot.wim --compress=maximum
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 (
 	echo [Critical] Errors were reported during export.
@@ -132,7 +133,7 @@ IF %ERRORTEMP% NEQ 0 (
 	exit /b
 )
 echo.
-"%wimlib%" export "%ESD%" 3 ISOFOLDER\sources\boot.wim --boot
+"%wimlib%" export "!ESD!" 3 ISOFOLDER\sources\boot.wim --boot
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 (
 	echo [Critical] Errors were reported during export.
@@ -143,7 +144,7 @@ if "%MODE%"=="WIM" (
 	Echo.
 	echo [Info] Creating install.wim file...
 	Echo.
-	"%wimlib%" export "%ESD%" 4 ISOFOLDER\sources\install.wim --compress=maximum
+	"%wimlib%" export "!ESD!" 4 ISOFOLDER\sources\install.wim --compress=maximum
 	SET ERRORTEMP=%ERRORLEVEL%
 	IF %ERRORTEMP% NEQ 0 (
 		echo [Critical] Errors were reported during export.
@@ -155,7 +156,7 @@ if "%MODE%"=="ESD" (
 	Echo.
 	echo [Info] Creating install.esd file...
 	Echo.
-	"%wimlib%" export "%ESD%" 4 ISOFOLDER\sources\install.esd
+	"%wimlib%" export "!ESD!" 4 ISOFOLDER\sources\install.esd
 	SET ERRORTEMP=%ERRORLEVEL%
 	IF %ERRORTEMP% NEQ 0 (
 		echo [Critical] Errors were reported during export.
@@ -190,9 +191,9 @@ IF %ERRORTEMP% NEQ 0 (
 	exit /b
 )
 rmdir /s /q ISOFOLDER\
-IF EXIST "%ESD%.bak" (
-	del /f /q "%ESD%" >nul 2>&1
-	for %%f in (%ESD%) do ren "%ESD%.bak" %%~nf.esd
+IF EXIST "!ESD!.bak" (
+	del /f /q "!ESD!" >nul 2>&1
+	for %%f in (!ESD!) do ren "!ESD!.bak" %%~nf.esd
 )
 echo.
 echo Press any key to exit.
@@ -200,13 +201,14 @@ pause >nul
 exit /b
 
 :Decrypt <ESD> {key}
-if not exist "%~1.bak" (
+set "ESD2=%~1"
+if not exist "!ESD!.bak" (
 	echo [Info] Backing up original esd file...
-	copy "%~1" "%1.bak" >nul
+	copy "!ESD!" "!ESD!.bak" >nul
 )
 echo [Info] Running Decryption program...
-bin\esddecrypt.exe "%~1" 2>"%temp%\esddecrypt.log"&&exit /b
-bin\esddecrypt.exe "%~1" %2 &&exit /b
+bin\esddecrypt.exe "!ESD!" 2>"%temp%\esddecrypt.log"&&exit /b
+bin\esddecrypt.exe "!ESD!" %2 &&exit /b
 type "%temp%\esddecrypt.log"
 echo [Critical] Errors were reported during ESD decryption.
 goto error
@@ -273,9 +275,9 @@ exit /b
 
 :error
 if exist ISOFOLDER\nul rmdir /s /q ISOFOLDER\
-IF EXIST "%ESD%.bak" (
-	del /f /q "%ESD%" >nul 2>&1
-	for %%f in (%ESD%) do ren "%ESD%.bak" %%~nf.esd
+IF EXIST "!ESD!.bak" (
+	del /f /q "!ESD!" >nul 2>&1
+	for %%f in (!ESD!) do ren "!ESD!.bak" %%~nf.esd
 )
 exit /b
 
