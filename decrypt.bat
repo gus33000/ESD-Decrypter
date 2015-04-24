@@ -82,8 +82,8 @@ exit /b
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> {key}
 echo.
 set "MODE=%~1"
-set "ESD=%~s2"
-set "OUT=%~s3"
+set "ESD=%~2"
+set "OUT=%~3"
 if [%OUT:~-1%]==[\] set "OUT=%OUT:~0,-1%"
 set "KEY=%4"
 set "ESDN=%2"
@@ -96,12 +96,10 @@ if not exist "%wimlib%" (
 )
 setlocal EnableDelayedExpansion
 %wimlib% info "%ESD%" 4 1>nul 2>nul
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% EQU 74 call :Decrypt "%ESDN~%" %key%
-IF %ERRORTEMP% NEQ 0 (
-	echo %wimlib% info "%ESDN%" 4
+IF %ERRORLEVEL% EQU 74 call :Decrypt "%ESD%" %key%
+IF %ERRORLEVEL% NEQ 0 (
 	echo [Critical] The filename is missing or damaged.
-	echo [Critical] Error code : %ERRORTEMP%
+	echo [Critical] Error code : %ERRORLEVEL%
 	goto error
 	exit /b
 )
