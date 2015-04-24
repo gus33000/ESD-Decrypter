@@ -97,7 +97,7 @@ if not exist "%wimlib%" (
 setlocal EnableDelayedExpansion
 %wimlib% info "%ESD%" 4 1>nul 2>nul
 SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% EQU 74 call :Decrypt "%ESDN%" %key%
+IF %ERRORTEMP% EQU 74 call :Decrypt "%ESDN~%" %key%
 IF %ERRORTEMP% NEQ 0 (
 	echo %wimlib% info "%ESDN%" 4
 	echo [Critical] The filename is missing or damaged.
