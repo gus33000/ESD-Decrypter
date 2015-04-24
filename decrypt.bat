@@ -276,26 +276,27 @@ exit /b
 
 :help
 echo.
-echo Usage: %~n0 
-echo             /Mode:^<Mode^> ^<Options^>
+echo Usage: 
+echo %~n0 
+echo      /Mode:^<Mode^> ^<Options^>
 echo.
-echo             Available modes :
+echo      Available modes :
 echo.
-echo                1 - Convert and decrypt ESD to an ISO with an Install.wim file
-echo                2 - Convert and decrypt ESD to an ISO with an Install.esd file
+echo         1 - Convert and decrypt ESD to an ISO with an Install.wim file
+echo         2 - Convert and decrypt ESD to an ISO with an Install.esd file
 echo.
-echo             Available options :
+echo      Available options :
 echo.
-echo                /File ^<ESD^> where ESD is the path to the ESD file to process (*)
-echo                /Key ^<Key^> where Key is the complete Cryptographic RSA key used to decrypt the ESD file
-echo                /Output ^<Folder^> where Folder is the folder which will contain the resulted ISO file (*)
+echo         /File ^<ESD^> where ESD is the path to the ESD file to process (*)
+echo         /Key ^<Key^> where Key is the complete Cryptographic RSA key used to decrypt the ESD file
+echo         /Output ^<Folder^> where Folder is the folder which will contain the resulted ISO file (*)
 echo.
-echo             Options marked with (*) are required
+echo      Options marked with (*) are required
 echo.
-echo             <ESD> <KEY>
+echo      <ESD> <KEY>
 echo.
-echo             where ESD is the path to the ESD file to process (*)
-echo             where Key is the complete Cryptographic RSA key used to decrypt the ESD file
+echo      where ESD is the path to the ESD file to process (*)
+echo      where Key is the complete Cryptographic RSA key used to decrypt the ESD file
 echo.
-echo             Options marked with (*) are required
+echo      Options marked with (*) are required
 exit /b
