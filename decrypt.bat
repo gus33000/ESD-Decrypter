@@ -183,7 +183,7 @@ set yyyy=%date:~0,4%
 set time=%date:~11,5%
 reg copy "HKCU\Control Panel\International-Temp" "HKCU\Control Panel\International" /f >nul
 if not exist %OUT%\nul mkdir %OUT%
-bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %OUT%\%DVDISO%
+bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -g -l%DVDLABEL% ISOFOLDER %OUT%\%DVDISO%
 SET ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 (
 	echo [Critical] Errors were reported during ISO creation.
