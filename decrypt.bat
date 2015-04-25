@@ -14,6 +14,7 @@ exit /B
 pushd "%CD%"
 CD /D "%~dp0"
 setlocal EnableDelayedExpansion
+set curver=1007
 set ESD=
 set MODE=
 set OUT=
@@ -24,6 +25,7 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
+call :autoupdate %*
 if exist "%~s1" goto AUTO
 if "%1"=="/?" goto help
 if "%1"=="/Mode:1" goto :PARSE1
@@ -292,6 +294,68 @@ IF EXIST "!ESD!.bak" (
 	del /f /q "!ESD!" >nul 2>&1
 	for /f "delims=" %%f in (!ESD!) do ren "!ESD!.bak" %%~nf.esd
 )
+exit /b
+
+:autoupdate
+set updateserver=http://gus33000.github.io/ESD-Decrypter/update
+Echo [Info] Script Current Build Number : %curver%
+Echo [Info] Checking for Updates...
+set "url=%updateserver%/version.txt"
+if not exist "%temp%\ESD-Decrypter\version.txt" mkdir "%temp%\ESD-Decrypter"
+if exist "%temp%\ESD-Decrypter\version.txt" del "%temp%\ESD-Decrypter\version.txt"
+for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
+bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\version.txt"
+bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%SystemRoot%\system32\bitsadmin.exe" "%SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
+bitsadmin.exe>nul /RESUME %GUID%
+:check
+bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check
+for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f goto :uptodate
+for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
+echo [Info] Found a new update for you : version %NewVersion%
+if "%~0"=="%CD%\%~nx0" (
+	echo F | xcopy "%~0" "%temp%\ESD-Decrypter\%~nx0" /cheriky
+	start /D "%CD%" %temp%\ESD-Decrypter\%~nx0 %*
+	exit
+)
+echo [Info] Downloading version %NewVersion%...
+set "url=%updateserver%/%NewVersion%.zip"
+for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
+bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\%NewVersion%.zip"
+bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%SystemRoot%\system32\bitsadmin.exe" "%SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
+bitsadmin.exe>nul /RESUME %GUID%
+:check2
+bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check2
+echo [Info] Extracting version %NewVersion%...
+Call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVersion%.zip"
+echo [Info] Applying update...
+xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cheriky
+echo [Info] Deleting temporary files...
+rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
+echo [Info] Update Applied : You are now up to date.
+start /D "%CD%" %CD%\%~nx0 %*
+exit
+:uptodate
+echo [Info] You are using the latest version of ESD-Decrypter !
+rmdir /S /Q "%temp%\ESD-Decrypter"
+exit /b
+
+:UnZipFile <ExtractTo> <newzipfile>
+set vbs="%temp%\_.vbs"
+if exist %vbs% del /f /q %vbs%
+>>%vbs% echo Set fso = CreateObject("Scripting.FileSystemObject")
+>>%vbs% echo ZipFile=fso.GetAbsolutePathName("%~2")
+>>%vbs% echo ExtractTo=fso.GetAbsolutePathName("%~1")
+>>%vbs% echo Set fso = CreateObject("Scripting.FileSystemObject")
+>>%vbs% echo If NOT fso.FolderExists(ExtractTo) Then
+>>%vbs% echo    fso.CreateFolder(ExtractTo)
+>>%vbs% echo End If
+>>%vbs% echo set objShell = CreateObject("shell.application")
+>>%vbs% echo set FilesInZip=objShell.NameSpace(ZipFile).items
+>>%vbs% echo objShell.NameSpace(ExtractTo).CopyHere(FilesInZip)
+>>%vbs% echo Set fso = Nothing
+>>%vbs% echo Set objShell = Nothing
+cscript //nologo %vbs%
+if exist %vbs% del /f /q %vbs%
 exit /b
 
 :help
