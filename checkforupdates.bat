@@ -38,6 +38,7 @@ exit /b
 :uptodate
 echo [Info] You are using the latest version of ESD-Decrypter !
 echo [Info] Running version %curver%
+rmdir /S /Q "%temp%\ESD-Decrypter"
 pause
 exit /b
 
