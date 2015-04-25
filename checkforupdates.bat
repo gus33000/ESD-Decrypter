@@ -15,6 +15,11 @@ bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check
 type %temp%\ESD-Decrypter\version.txt | find "%curver%" >nul 2>&1 && goto :uptodate
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
+if "%~dp0"=="%CD%\" (
+	echo F | xcopy "checkforupdates.bat" "%temp%\ESD-Decrypter\checkforupdates.bat" /cheriky
+	start /D "%CD%" %temp%\ESD-Decrypter\checkforupdates.bat
+	exit
+)
 echo [Info] Downloading version %NewVersion%...
 set "url=http://gus33000.github.io/ESD-Decrypter/%NewVersion%.zip"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
@@ -32,7 +37,7 @@ echo [Info] Deleting temporary files...
 rmdir /S /Q "%temp%\ESD-Decrypter"
 echo [Info] Update Applied : You are now up to date.
 pause
-exit /b
+exit
 
 
 :uptodate
