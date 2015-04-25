@@ -224,11 +224,15 @@ for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"
 for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
 
 echo [Info] ESD Technical Details :
+echo.
+echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
+echo [Info] Build : %build%
+echo [Info] Service Pack Build : %svcbuild%
 echo [Info] Architecture : %arch%
 echo [Info] Edition : %editionid%
-echo [Info] Build : %build%
 echo [Info] Language : %langid%
-echo [Info] Service Pack Build : %svcbuild%
+echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
+echo.
  
 set lang=%langid:~0,2%
 if /i %langid%==en-gb set lang=en-gb
