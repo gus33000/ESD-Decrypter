@@ -204,7 +204,9 @@ exit /b
 set "ESD2=%~1"
 if not exist "!ESD!.bak" (
 	echo [Info] Backing up original esd file...
-	copy "!ESD!" "!ESD!.bak" >nul
+	echo.
+	copy "!ESD!" "!ESD!.bak" /z
+	echo.
 )
 echo [Info] Running Decryption program...
 bin\esddecrypt.exe "!ESD!" 2>"%temp%\esddecrypt.log"&&exit /b
@@ -221,6 +223,13 @@ for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"'
 for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
 for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
 
+echo [Info] ESD Technical Details :
+echo [Info] Architecture : %arch%
+echo [Info] Edition : %editionid%
+echo [Info] Build : %build%
+echo [Info] Language : %langid%
+echo [Info] Service Pack Build : %svcbuild%
+ 
 set lang=%langid:~0,2%
 if /i %langid%==en-gb set lang=en-gb
 if /i %langid%==es-mx set lang=es-mx
@@ -265,10 +274,10 @@ if %build% GTR 9600 (
 
 if %build% GEQ 9896 (
 	set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_singlelanguage_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_china_%build%_%arch%_dvd.iso
-	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
+	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_core_technical_preview_%build%_%arch%_dvd.iso
+	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%build%_%arch%_dvd.iso
+	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_china_technical_preview_%build%_%arch%_dvd.iso
+	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_pro_technical_preview_%build%_%arch%_dvd.iso
 	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=%lang%_windows_10_enterprise_technical_preview_%build%_%arch%_dvd.iso
 )
 exit /b
