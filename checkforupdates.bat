@@ -2,18 +2,18 @@
 for /f %%f in ('type version.txt') do set curver=%%f
 Echo [Info] Script Current Version : %curver%
 Echo [Info] Checking for Updates...
-set "url=https://raw.githubusercontent.com/gus33000/ESD-Decrypter/master/update.txt"
-if not exist "%temp%\ESD-Decrypter\update.txt" mkdir "%temp%\ESD-Decrypter"
-if exist "%temp%\ESD-Decrypter\update.txt" del "%temp%\ESD-Decrypter\update.txt"
+set "url=https://raw.githubusercontent.com/gus33000/ESD-Decrypter/master/version.txt"
+if not exist "%temp%\ESD-Decrypter\version.txt" mkdir "%temp%\ESD-Decrypter"
+if exist "%temp%\ESD-Decrypter\version.txt" del "%temp%\ESD-Decrypter\version.txt"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
-bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\update.txt"
+bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\version.txt"
 bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%SystemRoot%\system32\bitsadmin.exe" "%SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
 bitsadmin.exe>nul /RESUME %GUID%
 
 :check
 bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check
-type %temp%\ESD-Decrypter\update.txt | find "%curver%" >nul 2>&1 && goto :uptodate
-for /f %%f in ('type %temp%\ESD-Decrypter\update.txt') do set NewVersion=%%f
+type %temp%\ESD-Decrypter\version.txt | find "%curver%" >nul 2>&1 && goto :uptodate
+for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
 echo [Info] Downloading version %NewVersion%...
 set "url=http://gus33000.github.io/ESD-Decrypter/%NewVersion%.zip"
@@ -28,6 +28,8 @@ echo [Info] Extracting version %NewVersion%...
 Call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVersion%.zip"
 echo [Info] Applying update...
 xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cheriky
+echo [Info] Deleting temporary files...
+rmdir /S /Q "%temp%\ESD-Decrypter"
 echo [Info] Update Applied : You are now up to date.
 pause
 exit /b
