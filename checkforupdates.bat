@@ -34,7 +34,7 @@ Call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVe
 echo [Info] Applying update...
 xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cheriky
 echo [Info] Deleting temporary files...
-rmdir /S /Q "%temp%\ESD-Decrypter"
+rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
 echo [Info] Update Applied : You are now up to date.
 pause
 exit
