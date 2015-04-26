@@ -14,7 +14,7 @@ exit /B
 pushd "%CD%"
 CD /D "%~dp0"
 setlocal EnableDelayedExpansion
-set curver=1008
+set curver=1009
 set ESD=
 set MODE=
 set OUT=
@@ -333,6 +333,7 @@ xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cheriky
 echo [Info] Deleting temporary files...
 rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
 echo [Info] Update Applied : You are now up to date.
+ping 1.1.1.1 -n 1 -w 2000 > nul
 start /D "%CD%" %CD%\%~nx0 %*
 exit
 :uptodate
