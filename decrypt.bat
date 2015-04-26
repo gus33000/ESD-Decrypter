@@ -14,7 +14,7 @@ exit /B
 pushd "%CD%"
 CD /D "%~dp0"
 setlocal EnableDelayedExpansion
-set curver=1007
+set curver=1008
 set ESD=
 set MODE=
 set OUT=
@@ -25,7 +25,8 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
-call :autoupdate %*
+if not "%1"=="/noupdate" call :autoupdate %*
+if "%1"=="/noupdate" shift
 if exist "%~s1" goto AUTO
 if "%1"=="/?" goto help
 if "%1"=="/Mode:1" goto :PARSE1
@@ -315,7 +316,7 @@ echo [Info] Found a new update for you : version %NewVersion%
 if "%~0"=="%CD%\%~nx0" (
 	echo F | xcopy "%~0" "%temp%\ESD-Decrypter\%~nx0" /cheriky
 	start /D "%CD%" %temp%\ESD-Decrypter\%~nx0 %*
-	exit
+	exit 101
 )
 echo [Info] Downloading version %NewVersion%...
 set "url=%updateserver%/%NewVersion%.zip"
@@ -383,4 +384,8 @@ echo      where ESD is the path to the ESD file to process (*)
 echo      where Key is the complete Cryptographic RSA key used to decrypt the ESD file
 echo.
 echo      Options marked with (*) are required
+echo.
+echo      Aditional Stuff :
+echo.
+echo      Place this switch at the beginning of each commands to not check for updates : /noupdate
 exit /b
