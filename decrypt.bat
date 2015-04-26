@@ -26,7 +26,7 @@ echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
 if not "%~1"=="/noupdate" (
-	PING -n 3 gus33000.github.io|find "Reply from " >NUL
+	PING -n 3 gus33000.github.io >NUL
 	IF ERRORLEVEL 1 echo [Info] No Internet Connection found, couldn't check for updates
 	IF NOT ERRORLEVEL 1 call :autoupdate %*
 )
