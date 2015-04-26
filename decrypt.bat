@@ -14,28 +14,34 @@ exit /B
 pushd "%CD%"
 CD /D "%~dp0"
 setlocal EnableDelayedExpansion
+:: UPDATE SYSTEM
 if exist "%~1\%~nx0" (
 	CD /D "%~1"
 )
+:: UPDATE SYSTEM
 set curver=1010
 set ESD=
 set MODE=
 set OUT=
 set wimlib=
 set KEY=
+:: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
+:: UPDATE SYSTEM
 title ESD to ISO Converter / Decrypter
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
+:: UPDATE SYSTEM
 if not "%~1"=="/noupdate" (
 	PING -n 3 gus33000.github.io >NUL
 	IF ERRORLEVEL 1 echo [Info] No Internet Connection found, couldn't check for updates
 	IF NOT ERRORLEVEL 1 call :autoupdate %*
 )
 if "%~1"=="/noupdate" shift
+:: UPDATE SYSTEM
 if exist "%~s1" goto AUTO
 if "%1"=="/?" goto help
 if "%1"=="/Mode:1" goto :PARSE1
@@ -306,6 +312,7 @@ IF EXIST "!ESD!.bak" (
 )
 exit /b
 
+:: UPDATE SYSTEM
 :autoupdate
 set updateserver=http://gus33000.github.io/ESD-Decrypter/update
 Echo [Info] Script Current Build Number : %curver%
@@ -373,6 +380,7 @@ if exist %vbs% del /f /q %vbs%
 cscript //nologo %vbs%
 if exist %vbs% del /f /q %vbs%
 exit /b
+:: UPDATE SYSTEM
 
 :help
 echo.
