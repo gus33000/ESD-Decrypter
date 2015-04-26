@@ -14,12 +14,17 @@ exit /B
 pushd "%CD%"
 CD /D "%~dp0"
 setlocal EnableDelayedExpansion
-set curver=1009
+if exist "%~1\%~nx0" (
+	CD /D "%~1"
+)
+set curver=1010
 set ESD=
 set MODE=
 set OUT=
 set wimlib=
 set KEY=
+set "FILE=%~0"
+set "FILEN=%~nx0"
 title ESD to ISO Converter / Decrypter
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
@@ -310,35 +315,40 @@ if not exist "%temp%\ESD-Decrypter\version.txt" mkdir "%temp%\ESD-Decrypter"
 if exist "%temp%\ESD-Decrypter\version.txt" del "%temp%\ESD-Decrypter\version.txt"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
 bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\version.txt"
-bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%SystemRoot%\system32\bitsadmin.exe" "%SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
+bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%CD%\bin\nircmd.exe" "%CD%\bin\nircmd.exe exec hide %SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
 bitsadmin.exe>nul /RESUME %GUID%
 :check
 bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f goto :uptodate
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
-if "%~0"=="%CD%\%~nx0" (
-	echo F | xcopy "%~0" "%temp%\ESD-Decrypter\%~nx0" /cheriky
-	start /D "%CD%" %temp%\ESD-Decrypter\%~nx0 %*
+if "%FILE%"=="%CD%\%~nx0" (
+	echo F | xcopy "%FILE%" "%temp%\ESD-Decrypter\%FILEN%" /cherikyq
+	start /D "%CD%" %temp%\ESD-Decrypter\%FILEN% "%CD%" %*
 	exit 101
 )
 echo [Info] Downloading version %NewVersion%...
 set "url=%updateserver%/%NewVersion%.zip"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
 bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\%NewVersion%.zip"
-bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%SystemRoot%\system32\bitsadmin.exe" "%SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
+bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%CD%\bin\nircmd.exe" "%CD%\bin\nircmd.exe exec hide %SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
 bitsadmin.exe>nul /RESUME %GUID%
 :check2
 bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check2
 echo [Info] Extracting version %NewVersion%...
-Call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVersion%.zip"
+call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVersion%.zip"
 echo [Info] Applying update...
-xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cheriky
+xcopy "%temp%\ESD-Decrypter\%NewVersion%" "%CD%" /cherikyq
 echo [Info] Deleting temporary files...
 rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
 echo [Info] Update Applied : You are now up to date.
 ping 1.1.1.1 -n 1 -w 2000 > nul
-start /D "%CD%" %CD%\%~nx0 %*
+shift
+:ARGPARSE
+set "ARGS=%ARGS% %1"
+shift
+if not "%~1"=="" goto :ARGPARSE
+start /D "%CD%" %CD%\%FILEN% %ARGS%
 exit
 :uptodate
 echo [Info] You are using the latest version of ESD-Decrypter !
