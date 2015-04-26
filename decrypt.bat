@@ -29,11 +29,6 @@ if not "%1"=="/noupdate" (
 	PING -n 3 gus33000.github.io|find "Reply from " >NUL
 	IF ERRORLEVEL 1 echo [Info] No Internet Connection found, couldn't check for updates
 	IF NOT ERRORLEVEL 1 call :autoupdate %*
-	REM IF NOT %code%==1 (
-		REM call :autoupdate %*
-	REM ) else (
-		REM echo [Info] No Internet Connection found, couldn't check for updates
-	REM )
 )
 if "%1"=="/noupdate" shift
 if exist "%~s1" goto AUTO
