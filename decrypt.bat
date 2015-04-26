@@ -19,7 +19,7 @@ if exist "%~1\%~nx0" (
 	CD /D "%~1"
 )
 :: UPDATE SYSTEM
-set curver=1010
+set curver=1011
 set ESD=
 set MODE=
 set OUT=
