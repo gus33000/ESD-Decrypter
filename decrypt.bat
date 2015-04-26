@@ -377,20 +377,24 @@ echo         2 - Convert and decrypt ESD to an ISO with an Install.esd file
 echo.
 echo      Available options :
 echo.
-echo         /File ^<ESD^> where ESD is the path to the ESD file to process (*)
-echo         /Key ^<Key^> where Key is the complete Cryptographic RSA key used to decrypt the ESD file
-echo         /Output ^<Folder^> where Folder is the folder which will contain the resulted ISO file (*)
+echo         /File ^<ESD^>      where ESD is the path to the ESD file to process (*)
+echo         /Key ^<Key^>       where Key is the complete Cryptographic RSA key used
+echo                          to decrypt the ESD file
+echo         /Output ^<Folder^> where Folder is the folder which will contain
+echo                          the resulted ISO file (*)
 echo.
 echo      Options marked with (*) are required
 echo.
 echo      ^<ESD^> ^<KEY^>
 echo.
 echo      where ESD is the path to the ESD file to process (*)
-echo      where Key is the complete Cryptographic RSA key used to decrypt the ESD file
+echo      where Key is the complete Cryptographic RSA key used to decrypt the
+echo      ESD file
 echo.
 echo      Options marked with (*) are required
 echo.
 echo      Aditional Stuff :
 echo.
-echo      Place this switch at the beginning of each commands to not check for updates : /noupdate
+echo      Place this switch at the beginning of each commands to not check for
+echo      updates : /noupdate
 exit /b
