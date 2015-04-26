@@ -411,7 +411,7 @@ echo      ESD file
 echo.
 echo      Options marked with (*) are required
 echo.
-echo      Aditional Stuff :
+echo      Additional Stuff :
 echo.
 echo      Place this switch at the beginning of each commands to not check for
 echo      updates : /noupdate
