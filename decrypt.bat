@@ -27,14 +27,17 @@ echo.
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1011
+set curver=1012
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
-if exist "%~s1" goto AUTO
-if "%1"=="/?" goto help
+if "%1"=="/help" goto help
 if "%1"=="/Mode:1" goto :PARSE1
 if "%1"=="/Mode:2" goto :PARSE2
+if exist "%~s1" goto AUTO
+if exist "*.esd" (for /f "delims=:" %%i in ('dir /b "*.esd"') do (call set /a _esd+=1))
+if !_esd! gtr 1 goto askesd
+if !_esd! equ 1 goto SINGLE
 goto help
 exit /b
 
@@ -50,6 +53,23 @@ echo.
 choice /N /C 012 /M "Your choice : "
 if %ERRORLEVEL% equ 2 call :ESD2ISO WIM "%~1" .\ YES NO
 if %ERRORLEVEL% equ 3 call :ESD2ISO ESD "%~1" .\ YES NO
+exit /b
+
+:SINGLE
+for /f "delims=:" %%i in ('dir /b "*.esd"') do set "esd=%%i"
+call :AUTO "%esd%"
+exit /b
+
+:askesd
+echo.
+echo What ESD do you want to process ?
+echo อออออออออออออออออออออออออออออออออ
+echo.
+dir /b *.esd
+echo.
+set /p esd=Please enter the esd that you want to process : 
+if not exist "%esd%" goto askesd
+call :AUTO "%esd%"
 exit /b
 
 :PARSE1
@@ -445,4 +465,6 @@ echo      Additional Stuff :
 echo.
 echo      Place this switch at the beginning of each commands to not check for
 echo      updates : /noupdate
+echo.
+echo      To display help run the following command : /help
 exit /b
