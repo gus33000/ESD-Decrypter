@@ -48,8 +48,8 @@ echo [2] Create Full ISO with Compressed install.esd
 echo [0] Exit Script
 echo.
 choice /N /C 012 /M "Your choice : "
-if %ERRORLEVEL% equ 2 call :ESD2ISO WIM "%~1" .\
-if %ERRORLEVEL% equ 3 call :ESD2ISO ESD "%~1" .\
+if %ERRORLEVEL% equ 2 call :ESD2ISO WIM "%~1" .\ YES NO
+if %ERRORLEVEL% equ 3 call :ESD2ISO ESD "%~1" .\ YES NO
 exit /b
 
 :PARSE1
@@ -66,10 +66,20 @@ if "%1"=="/Output" (
 	set "OUT=%~2"
 	shift & shift
 )
+if "%1"=="/NoBackup" (
+	set BACKUP=NO
+	shift
+)
+if "%1"=="/DeleteESD" (
+	set DeleteESD=YES
+	shift
+)
 if not "%1"=="" goto :PARSE1
+if not "%DeleteESD%"=="YES" set DeleteESD=NO
+if not "%BACKUP%"=="NO" set BACKUP=YES
 if "%OUT%"=="" goto help
 if "!ESD!"=="" goto help
-call :ESD2ISO WIM "!ESD!" "%OUT%" %KEY%
+call :ESD2ISO WIM "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
 exit /b
 
 :PARSE2
@@ -86,13 +96,23 @@ if "%1"=="/Output" (
 	set "OUT=%~2"
 	shift & shift
 )
+if "%1"=="/NoBackup" (
+	set BACKUP=NO
+	shift
+)
+if "%1"=="/DeleteESD" (
+	set DeleteESD=YES
+	shift
+)
 if not "%1"=="" goto :PARSE1
+if not "%DeleteESD%"=="YES" set DeleteESD=NO
+if not "%BACKUP%"=="NO" set BACKUP=YES
 if "%OUT%"=="" goto help
 if "!ESD!"=="" goto help
-call :ESD2ISO ESD "!ESD!" "%OUT%" %KEY%
+call :ESD2ISO ESD "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
 exit /b
 
-:ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> {key}
+:ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> {key}
 echo.
 set "MODE=%~1"
 set "ESD=%~2"
@@ -116,7 +136,7 @@ IF %ERRORLEVEL% NEQ 0 (
 	exit /b
 )
 set ERRORTEMP=
-call :PREPARE "!ESD!"
+call :PREPARE "!ESD!" %~4
 echo [Info] Creating Setup Media Layout...
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
@@ -198,22 +218,29 @@ IF %ERRORTEMP% NEQ 0 (
 	exit /b
 )
 rmdir /s /q ISOFOLDER\
-IF EXIST "!ESD!.bak" (
+if "%~4"=="YES" (
+	IF EXIST "!ESD!.bak" (
+		del /f /q "!ESD!" >nul 2>&1
+		for /f "delims=" %%f in ("!ESD!") do ren "!ESD!.bak" %%~nf.esd
+	)
+)
+if "%~5"=="YES" (
 	del /f /q "!ESD!" >nul 2>&1
-	for /f "delims=" %%f in ("!ESD!") do ren "!ESD!.bak" %%~nf.esd
 )
 echo.
 echo Press any key to exit.
 pause >nul
 exit /b
 
-:Decrypt <ESD> {key}
+:Decrypt <ESD> <Backup(YES|NO)> {key}
 set "ESD2=%~1"
-if not exist "!ESD!.bak" (
-	echo [Info] Backing up original esd file...
-	echo.
-	copy "!ESD!" "!ESD!.bak" /z
-	echo.
+if "%~2"=="YES" (
+	if not exist "!ESD!.bak" (
+		echo [Info] Backing up original esd file...
+		echo.
+		copy "!ESD!" "!ESD!.bak" /z
+		echo.
+	)
 )
 echo [Info] Running Decryption program...
 bin\esddecrypt.exe "!ESD!" 2>"%temp%\esddecrypt.log"&&exit /b
@@ -400,6 +427,9 @@ echo         /Key ^<Key^>       where Key is the complete Cryptographic RSA key 
 echo                          to decrypt the ESD file
 echo         /Output ^<Folder^> where Folder is the folder which will contain
 echo                          the resulted ISO file (*)
+echo         /NoBackup          Flag to prevent the script from backing up the file
+echo         /DeleteESD         Flag to tell the script to delete the esd files after finishing
+echo         
 echo.
 echo      Options marked with (*) are required
 echo.
