@@ -380,7 +380,7 @@ for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f g
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
 if "%FILE%"=="%CD%\%~nx0" (
-	echo F | xcopy "%FILE%" "%temp%\ESD-Decrypter\%FILEN%" /cherikyq
+	xcopy "%FILE%" "%temp%\ESD-Decrypter\" /cherikyq
 	start /D "%CD%" %temp%\ESD-Decrypter\%FILEN% "%CD%" %*
 	exit 101
 )
