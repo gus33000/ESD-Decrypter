@@ -122,8 +122,8 @@ set "OUT=%~3"
 if [%OUT:~-1%]==[\] set "OUT=%OUT:~0,-1%"
 set "KEY=%4"
 chcp 437 >nul
-set "wimlib=%~dp0bin\wimlib-imagex.exe"
-if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dp0bin\bin64\wimlib-imagex.exe"
+set "wimlib=%~dps0bin\wimlib-imagex.exe"
+if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
 if not exist "%wimlib%" (
 	echo [Critical] %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
 	goto error
