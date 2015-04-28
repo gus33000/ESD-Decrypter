@@ -29,7 +29,7 @@ echo.
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1013
+set curver=1014
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
@@ -244,7 +244,7 @@ rmdir /s /q ISOFOLDER\
 if "%~4"=="YES" (
 	IF EXIST "!ESD!.bak" (
 		del /f /q "!ESD!" >nul 2>&1
-		for /f "delims=" %%f in ("!ESD!") do ren "!ESD!.bak" %%~nf.esd
+		ren "!ESD!.bak" "!ESD!"
 	)
 )
 if "%~5"=="YES" (
@@ -347,7 +347,7 @@ exit /b
 if exist ISOFOLDER\nul rmdir /s /q ISOFOLDER\
 IF EXIST "!ESD!.bak" (
 	del /f /q "!ESD!" >nul 2>&1
-	for /f "delims=" %%f in (!ESD!) do ren "!ESD!.bak" %%~nf.esd
+	ren "!ESD!.bak" "!ESD!"
 )
 exit /b
 
