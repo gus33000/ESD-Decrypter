@@ -29,7 +29,7 @@ echo.
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1014
+set curver=1015
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
@@ -59,6 +59,11 @@ exit /b
 
 :SINGLE
 for /f "delims=:" %%i in ('dir /b "*.esd"') do set "esd=%%i"
+echo.
+echo [Info] Selected ESD : 
+echo.
+echo "%esd%"
+echo.
 call :AUTO "%esd%"
 exit /b
 
