@@ -57,7 +57,6 @@ call :AUTO "%esd%"
 exit /b
 
 :askesd
-setlocal EnableDelayedExpansion
 echo.
 echo What ESD do you want to process ?
 echo อออออออออออออออออออออออออออออออออ
@@ -136,7 +135,6 @@ call :ESD2ISO ESD "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> {key}
-setlocal EnableDelayedExpansion
 echo.
 set "MODE=%~1"
 set "ESD=%~2"
@@ -372,11 +370,7 @@ set "url=%updateserver%/version.txt"
 if not exist "%temp%\ESD-Decrypter\version.txt" mkdir "%temp%\ESD-Decrypter"
 if exist "%temp%\ESD-Decrypter\version.txt" del "%temp%\ESD-Decrypter\version.txt"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
-bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\version.txt"
-bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%CD%\bin\nircmd.exe" "%CD%\bin\nircmd.exe exec hide %SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
-bitsadmin.exe>nul /RESUME %GUID%
-:check
-bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check
+bitsadmin>nul /transfer %GUID% /download /priority foreground %url% "%temp%\ESD-Decrypter\version.txt"
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f goto :uptodate
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
@@ -388,11 +382,7 @@ if "%FILE%"=="%CD%\%~nx0" (
 echo [Info] Downloading version %NewVersion%...
 set "url=%updateserver%/%NewVersion%.zip"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
-bitsadmin.exe>nul /ADDFILE %GUID% %url% "%temp%\ESD-Decrypter\%NewVersion%.zip"
-bitsadmin.exe>nul /SETNOTIFYCMDLINE %GUID% "%CD%\bin\nircmd.exe" "%CD%\bin\nircmd.exe exec hide %SystemRoot%\system32\bitsadmin.exe /COMPLETE %GUID%"
-bitsadmin.exe>nul /RESUME %GUID%
-:check2
-bitsadmin /list | find "%GUID%" >nul 2>&1 && goto :check2
+bitsadmin>nul /transfer %GUID% /download /priority foreground %url% "%temp%\ESD-Decrypter\%NewVersion%.zip"
 echo [Info] Extracting version %NewVersion%...
 call :UnZipFile "%temp%\ESD-Decrypter\%NewVersion%" "%temp%\ESD-Decrypter\%NewVersion%.zip"
 echo [Info] Applying update...
