@@ -26,6 +26,7 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
+if "%1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
@@ -33,7 +34,6 @@ set curver=1015
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
-if "%1"=="/help" goto help
 if "%1"=="/Mode:1" goto :PARSE1
 if "%1"=="/Mode:2" goto :PARSE2
 if exist "%~s1" goto AUTO
