@@ -9,8 +9,6 @@ set OUT=
 set wimlib=
 set KEY=
 title ESD to ISO Converter / Decrypter
-::TODO
-::ADD bitsadmin /transfer getVersionTxt /download /priority foreground http://gus33000.github.io/ESD-Decrypter/update/version.txt "version.txt"
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
