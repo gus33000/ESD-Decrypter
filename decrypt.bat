@@ -68,15 +68,22 @@ call :AUTO "%esd%"
 exit /b
 
 :askesd
+setlocal EnableDelayedExpansion
 echo.
 echo What ESD do you want to process ?
 echo อออออออออออออออออออออออออออออออออ
 echo.
-dir /b *.esd
+set nb=0
+for /f "delims=" %%f in ('dir /b *.esd') do (
+	set /a nb+=1
+	set var=!var!!nb!
+	echo [!nb!] %%f
+	set "esd!nb!=%%f"
+)
 echo.
-set /p esd=Please enter the esd that you want to process : 
-if not exist "%esd%" goto askesd
-call :AUTO "%esd%"
+choice /N /C %var% /M "Your choice : "
+set CHOICE=%ERRORLEVEL%
+call :AUTO "!esd%CHOICE%!"
 exit /b
 
 :PARSE1
