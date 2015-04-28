@@ -25,6 +25,8 @@ WIP - Don't use it until I mark a commit with the word STABLE
 -Fixed: A lot of stuff
 
 ### Credit for the original script and the tools used :
+abbodi1406 for the original script
+
 qad - decryption program
 
 synchronicity - wimlib
