@@ -215,8 +215,8 @@ if /i %editionid%==ProfessionalWMC (
 	Echo.
 	echo [Info] Integrating Generic WMC Tokens
 	Echo.
-	if %MODE%==WIM %wimlib% update ISOFOLDER\sources\install.wim 1 <bin\wim-update.txt 1>nul 2>nul
-	if %MODE%==ESD %wimlib% update ISOFOLDER\sources\install.esd 1 <bin\wim-update.txt 1>nul 2>nul
+	if %MODE%==WIM "%wimlib%" update ISOFOLDER\sources\install.wim 1 <bin\wim-update.txt 1>nul 2>nul
+	if %MODE%==ESD "%wimlib%" update ISOFOLDER\sources\install.esd 1 <bin\wim-update.txt 1>nul 2>nul
 )
 Echo.
 echo [Info] Creating ISO file...
