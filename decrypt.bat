@@ -319,6 +319,18 @@ if %build% GEQ 10074 (
 	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_pro_insider_preview_%build%_%arch%_dvd.iso
 	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=%lang%_windows_10_enterprise_insider_preview_%build%_%arch%_dvd.iso
 )
+
+if %build% GEQ 10100 (
+	if %build% LSS 10104 (
+		set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
+		if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_core_technical_preview_%build%_%arch%_dvd.iso
+		if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%build%_%arch%_dvd.iso
+		if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_china_technical_preview_%build%_%arch%_dvd.iso
+		if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_pro_technical_preview_%build%_%arch%_dvd.iso
+		if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=%lang%_windows_10_enterprise_technical_preview_%build%_%arch%_dvd.iso
+	)
+)
+
 exit /b
 
 :error
