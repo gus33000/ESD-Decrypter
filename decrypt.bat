@@ -21,8 +21,10 @@ set curver=1015
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
-if "%1"=="/Mode:1" goto :PARSE1
-if "%1"=="/Mode:2" goto :PARSE2
+if "%1"=="/Mode:1" set CHOICE=WIM
+if "%1"=="/Mode:1" goto :PARSE
+if "%1"=="/Mode:2" set CHOICE=ESD
+if "%1"=="/Mode:2" goto :PARSE
 if exist "%~s1" goto AUTO
 if exist "*.esd" (for /f "delims=:" %%i in ('dir /b "*.esd"') do (call set /a _esd+=1))
 if !_esd! gtr 1 goto askesd
@@ -72,7 +74,7 @@ set CHOICE=%ERRORLEVEL%
 call :AUTO "!esd%CHOICE%!"
 exit /b
 
-:PARSE1
+:PARSE
 IF NOT "%1"=="" (
 	if "%1"=="/File" (
 		set "ESD=%~2"
@@ -93,43 +95,13 @@ IF NOT "%1"=="" (
 		set DeleteESD=YES
 	)
 	shift
-	goto :PARSE1
+	goto :PARSE
 )
 if not "%DeleteESD%"=="YES" set DeleteESD=NO
 if not "%BACKUP%"=="NO" set BACKUP=YES
 if "%OUT%"=="" goto help
 if "!ESD!"=="" goto help
-call :ESD2ISO WIM "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
-exit /b
-
-:PARSE2
-IF NOT "%1"=="" (
-	if "%1"=="/File" (
-		set "ESD=%~2"
-		shift
-	)
-	if "%1"=="/Key" (
-		set "KEY=%~2"
-		shift
-	)
-	if "%1"=="/Output" (
-		set "OUT=%~2"
-		shift
-	)
-	if "%1"=="/NoBackup" (
-		set BACKUP=NO
-	)
-	if "%1"=="/DeleteESD" (
-		set DeleteESD=YES
-	)
-	shift
-	goto :PARSE2
-)
-if not "%DeleteESD%"=="YES" set DeleteESD=NO
-if not "%BACKUP%"=="NO" set BACKUP=YES
-if "%OUT%"=="" goto help
-if "!ESD!"=="" goto help
-call :ESD2ISO ESD "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
+call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> {key}
