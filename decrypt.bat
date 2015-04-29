@@ -2,7 +2,8 @@
 @echo off
 set "params=%*"
 if not "!params!"=="" set "params=%params:"=""%"
-pushd "%cd%" && cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) && fsutil dirty query %systemdrive% >nul || if %errorlevel%==0 (  echo Set UAC = CreateObject^("Shell.Application"^) : UAC.ShellExecute "cmd.exe", "/k cd ""%~dp0"" && %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs" && "%temp%\getadmin.vbs" && exit /B )
+pushd "%cd%" && cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) && fsutil dirty query %systemdrive% >nul || if %errorlevel%==0 (  echo Set UAC = CreateObject^("Shell.Application"^) : UAC.ShellExecute "cmd.exe", "/k cd ""%~sdp0"" && %~s0 %params%", "", "runas", 1 >> "%temp%\getadmin.vbs" && "%temp%\getadmin.vbs" && exit /B )
+echo off
 set ESD=
 set MODE=
 set OUT=
@@ -216,7 +217,7 @@ if /i %editionid%==ProfessionalWMC (
 	echo [Info] Integrating Generic WMC Tokens
 	Echo.
 	if %MODE%==WIM %wimlib% update ISOFOLDER\sources\install.wim 1 <bin\wim-update.txt 1>nul 2>nul
-	if %MODE%==ESD %wimlib% update ISOFOLDER\sources\install.wim 1 <bin\wim-update.txt 1>nul 2>nul
+	if %MODE%==ESD %wimlib% update ISOFOLDER\sources\install.esd 1 <bin\wim-update.txt 1>nul 2>nul
 )
 Echo.
 echo [Info] Creating ISO file...
@@ -369,7 +370,11 @@ if not exist "%temp%\ESD-Decrypter\version.txt" mkdir "%temp%\ESD-Decrypter"
 if exist "%temp%\ESD-Decrypter\version.txt" del "%temp%\ESD-Decrypter\version.txt"
 for /f "tokens=3 delims=:. " %%f in ('bitsadmin.exe /CREATE /DOWNLOAD "ESD-Decrypter Update Services" ^| findstr "Created job"') do set GUID=%%f
 bitsadmin>nul /transfer %GUID% /download /priority foreground %url% "%temp%\ESD-Decrypter\version.txt"
-for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f goto :uptodate
+for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do if %curver% GEQ %%f (
+	echo [Info] You are using the latest version of ESD-Decrypter !
+	rmdir /S /Q "%temp%\ESD-Decrypter"
+	exit /b
+)
 for /f %%f in ('type %temp%\ESD-Decrypter\version.txt') do set NewVersion=%%f
 echo [Info] Found a new update for you : version %NewVersion%
 if "%FILE%"=="%CD%\%~nx0" (
@@ -389,17 +394,12 @@ echo [Info] Deleting temporary files...
 rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
 echo [Info] Update Applied : You are now up to date.
 ping 1.1.1.1 -n 1 -w 2000 > nul
-shift
-:ARGPARSE
-set "ARGS=%ARGS% %1"
-shift
-if not "%~1"=="" goto :ARGPARSE
+set "ARGS=%*"
+set "ARGS=%ARGS:%1=%"
+echo %ARGS%
+pause
 start /D "%CD%" %CD%\%FILEN% %ARGS%
 exit
-:uptodate
-echo [Info] You are using the latest version of ESD-Decrypter !
-rmdir /S /Q "%temp%\ESD-Decrypter"
-exit /b
 
 :UnZipFile <ExtractTo> <newzipfile>
 set vbs="%temp%\_.vbs"
