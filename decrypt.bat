@@ -393,10 +393,11 @@ echo [Info] Deleting temporary files...
 rmdir /S /Q "%temp%\ESD-Decrypter\%NewVersion%"
 echo [Info] Update Applied : You are now up to date.
 ping 1.1.1.1 -n 1 -w 2000 > nul
-set "ARGS=%*"
-set "ARGS=%ARGS:%1=%"
-echo %ARGS%
-pause
+shift
+:ARGPARSE
+set "ARGS=%ARGS% %1"
+shift
+if not "%~1"=="" goto :ARGPARSE
 start /D "%CD%" %CD%\%FILEN% %ARGS%
 exit
 
