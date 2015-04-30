@@ -221,8 +221,6 @@ if "%~5"=="YES" (
 	del /f /q "!ESD!" >nul 2>&1
 )
 echo.
-echo Press any key to exit.
-pause >nul
 exit /b
 
 :Decrypt <ESD> <Backup(YES|NO)> {key}
