@@ -17,7 +17,7 @@ if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1017
+set curver=1018
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
@@ -88,6 +88,10 @@ IF NOT "%1"=="" (
 		set "OUT=%~2"
 		shift
 	)
+	if "%1"=="/Scheme" (
+		set "SCHEME=%~2"
+		shift
+	)
 	if "%1"=="/NoBackup" (
 		set BACKUP=NO
 	)
@@ -101,7 +105,8 @@ if not "%DeleteESD%"=="YES" set DeleteESD=NO
 if not "%BACKUP%"=="NO" set BACKUP=YES
 if "%OUT%"=="" goto help
 if "!ESD!"=="" goto help
-call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% 1 %KEY%
+if "%SCHEME%"=="" set SCHEME=1
+call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %SCHEME% %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <FilenameType> {key}
@@ -129,7 +134,9 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 set ERRORTEMP=
 call :GETESDINFO "%ESD%"
-call :GETNAMES%6 "%ESD%"
+if %6 EQU 0 call :GETNAMES1 "%ESD%"
+if %6 GTR 3 call :GETNAMES1 "%ESD%"
+if not %6 GTR 3 call :GETNAMES%6 "%ESD%"
 echo [Info] Creating Setup Media Layout...
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
@@ -580,8 +587,11 @@ echo         /Key ^<Key^>       where Key is the complete Cryptographic RSA key 
 echo                          to decrypt the ESD file
 echo         /Output ^<Folder^> where Folder is the folder which will contain
 echo                          the resulted ISO file (*)
-echo         /NoBackup          Flag to prevent the script from backing up the file
-echo         /DeleteESD         Flag to tell the script to delete the esd files after finishing         
+echo         /NoBackup        Flag to prevent the script from backing up the file
+echo         /DeleteESD       Flag to tell the script to delete the esd files after finishing         
+echo         /Scheme ^<SchemeNumber^> 1 for common filenames
+echo                                2 for Windows Build Lab styled filenames
+echo                                3 for Windows 7 Styled filenames
 echo.
 echo      Options marked with (*) are required
 echo.
