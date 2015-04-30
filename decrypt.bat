@@ -311,13 +311,13 @@ if %build% GEQ 9896 (
 	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=%lang%_windows_10_enterprise_technical_preview_%build%_%arch%_dvd.iso
 )
 
-if %build% GEQ 10066 (
-	set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_insider_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_core_insider_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_singlelanguage_insider_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5&set DVDISO=%lang%_windows_10_china_insider_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=%lang%_windows_10_pro_insider_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=%lang%_windows_10_enterprise_insider_preview_%build%_%arch%_dvd.iso
+if %build% GTR 10066 (
+	set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5&set DVDISO=Windows10_InsiderPreview_%arch%_%lang%_%build%.iso
+	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5&set DVDISO=Windows10_Core_InsiderPreview_%arch%_%lang%_%build%.iso
+	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5&set DVDISO=Windows10_SingleLanguage_InsiderPreview_%arch%_%lang%_%build%.iso
+	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5&set DVDISO=Windows10_China_InsiderPreview_%arch%_%lang%_%build%.iso
+	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5&set DVDISO=Windows10_Pro_InsiderPreview_%arch%_%lang%_%build%.iso
+	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5&set DVDISO=Windows10_Enterprise_InsiderPreview_%arch%_%lang%_%build%.iso
 )
 
 if %build% GEQ 10100 (
