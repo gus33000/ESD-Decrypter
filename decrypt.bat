@@ -224,7 +224,6 @@ echo.
 exit /b
 
 :Decrypt <ESD> <Backup(YES|NO)> {key}
-echo %*
 set "ESD2=%~1"
 if "%~2"=="YES" (
 	if not exist "!ESD2!.bak" (
