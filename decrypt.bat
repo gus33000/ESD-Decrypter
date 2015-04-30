@@ -110,7 +110,9 @@ call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %SCHEME% %KEY%
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <FilenameType> {key}
-echo.
+call :StartTimer
+Echo Process Started at %StartTime%
+Echo.
 set "MODE=%~1"
 set "ESD=%~2"
 set "OUT=%~3"
@@ -133,10 +135,9 @@ IF %ERRORLEVEL% NEQ 0 (
 	exit /b
 )
 set ERRORTEMP=
-call :GETESDINFO "%ESD%"
-if %6 EQU 0 call :GETNAMES1 "%ESD%"
-if %6 GTR 3 call :GETNAMES1 "%ESD%"
-if not %6 GTR 3 call :GETNAMES%6 "%ESD%"
+if %6 EQU 0 call :GETESDINFO "%ESD%" 1
+if %6 GTR 3 call :GETESDINFO "%ESD%" 1
+if not %6 GTR 3 call :GETESDINFO "%ESD%" %6
 echo [Info] Creating Setup Media Layout...
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
@@ -228,6 +229,8 @@ if "%~5"=="YES" (
 	del /f /q "!ESD!" >nul 2>&1
 )
 echo.
+call :StopTimer
+call :DisplayTimerResult
 exit /b
 
 :Decrypt <ESD> <Backup(YES|NO)> {key}
@@ -248,15 +251,7 @@ echo [Critical] Errors were reported during ESD decryption.
 goto error
 exit /b
 
-
 :GETESDINFO
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
-if /i %arch%==x86 set archl=X86
-if /i %arch%==x86_64 set arch=x64&set archl=X64
 "%wimlib%">nul extract "%~1" 1 sources\idwbinfo.txt
 for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" "idwbinfo.txt"') do @set BuildBranch=%%a
 for /f "tokens=2 delims==" %%a in ('find "BuildType=" "idwbinfo.txt"') do @set BuildType=%%a
@@ -265,216 +260,227 @@ del>nul idwbinfo.txt
 for /f "tokens=2 delims=:()%BuildBranch%" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate=%%a
 del>nul setup.exe
 set CompileDate=%CompileDate:.=%
-Echo.
+
+:: LIST OF STUFF
+:: =============
+:: Index
+:: Name
+:: Description
+:: DisplayName
+:: DisplayDescription
+:: DirectoryCount
+:: FileCount
+:: TotalBytes
+:: HardLinkBytes
+:: CreationTime
+:: LastModificationTime
+:: Architecture
+:: ProductName
+:: EditionID
+:: InstallationType
+:: HAL
+:: ProductType
+:: ProductSuite
+:: Languages
+:: DefaultLanguage
+:: SystemRoot
+:: MajorVersion
+:: MinorVersion
+:: Build
+:: ServicePackBuild
+:: ServicePackLevel
+:: Flags
+:: WIMBootcompatible
+::
+for /f "skip=2 delims=" %%f in ('%wimlib% info "%~1" 4') do (
+	for /f "tokens=1 delims=:" %%a in ('echo %%f') do set value=%%a
+	for /f "tokens=2* delims=:" %%a in ('echo %%f') do (
+		for /f "tokens=*" %%i in ('echo %%a') do set "var=%%i"
+	)
+	set !value: =!=!var!
+	REM echo !value: =! ^=^> !var!
+)
+
+set LanguageID=!DefaultLanguage!
+for %%b in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set LanguageID=!LanguageID:%%b=%%b!
+set tag=IR3&set tag2=ir3
+if %ServicePackBuild% EQU 17056 set tag=IR4&set tag2=ir4
+if %ServicePackBuild% EQU 17415 set tag=IR5&set tag2=ir5
+if %ServicePackBuild% GTR 17415 set tag=IR6&set tag2=ir6
+if /i %Architecture%==x86 set arch=x86&archl=X86
+if /i %Architecture%==x86_64 set arch=x64&set archl=X64
+
 Echo [Info] Detailed ESD Information :
 Echo.
 echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
-echo [Info] Build : %build%.%svcbuild%.%CompileDate%
+echo [Info] Build : %Build%.%ServicePackBuild%.%CompileDate%
 echo [Info] Build Branch : %BuildBranch%
 echo [Info] Build Type : %BuildType%
 echo [Info] Architecture : %arch%
-echo [Info] Edition : %editionid%
-echo [Info] Language : %langid%
+echo [Info] Edition : %EditionID%
+echo [Info] Language : %LanguageID%
 echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
 echo.
+
+set DVDLABEL=%tag%_CCSA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==Core set DVDLABEL=%tag%_CCRA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreN set DVDLABEL=%tag%_CCRNA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreSingleLanguage set DVDLABEL=%tag%_CSLA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreCountrySpecific set DVDLABEL=%tag%_CCHA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==Professional set DVDLABEL=%tag%_CPRA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==ProfessionalN set DVDLABEL=%tag%_CPRNA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==ProfessionalWMC set DVDLABEL=%tag%_CPWMCA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreConnected set DVDLABEL=%tag%_CCONA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreConnectedN set DVDLABEL=%tag%_CCONNA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreConnectedSingleLanguage set DVDLABEL=%tag%_CCSLA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==CoreConnectedCountrySpecific set DVDLABEL=%tag%_CCCHA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==ProfessionalStudent set DVDLABEL=%tag%_CPRSA_%archl%FRER_%LanguageID%_DV9
+if /i %EditionID%==ProfessionalStudentN set DVDLABEL=%tag%_CPRSNA_%archl%FRER_%LanguageID%_DV9
+
+if %Build% GTR 9600 (
+	set DVDLABEL=JM1_CCSA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==Core set DVDLABEL=JM1_CCRA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==CoreSingleLanguage set DVDLABEL=JM1_CSLA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==CoreCountrySpecific set DVDLABEL=JM1_CCHA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==Professional set DVDLABEL=JM1_CPRA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==Enterprise set DVDLABEL=JM1_CENA_%archl%FREV_%LanguageID%_DV5
+)
+
+if %Build% GEQ 9896 (
+	set DVDLABEL=J_CCSA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==Core set DVDLABEL=J_CCRA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%LanguageID%_DV5
+)
+
+if %Build% GTR 10066 (
+	set DVDLABEL=J_CCSA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==Core set DVDLABEL=J_CCRA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%LanguageID%_DV5
+	if /i %EditionID%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%LanguageID%_DV5
+	if /i %EditionID%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%LanguageID%_DV5
+)
+
+if %Build% GEQ 10100 (
+	if %Build% LSS 10104 (
+		set DVDLABEL=J_CCSA_%archl%FRE_%LanguageID%_DV5
+		if /i %EditionID%==Core set DVDLABEL=J_CCRA_%archl%FRE_%LanguageID%_DV5
+		if /i %EditionID%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%LanguageID%_DV5
+		if /i %EditionID%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%LanguageID%_DV5
+		if /i %EditionID%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%LanguageID%_DV5
+		if /i %EditionID%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%LanguageID%_DV5
+	)
+)
+call :GENISONAME%~2 "%~1"
 exit /b
 
-
-:GETNAMES1
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
-set lang=%langid:~0,2%
-if /i %langid%==en-gb set lang=en-gb
-if /i %langid%==es-mx set lang=es-mx
-if /i %langid%==fr-ca set lang=fr-ca
-if /i %langid%==pt-pt set lang=pp
-if /i %langid%==sr-latn-rs set lang=sr-latn
-if /i %langid%==zh-cn set lang=cn
-if /i %langid%==zh-tw set lang=tw
-if /i %langid%==zh-hk set lang=hk
-for %%b in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set langid=!langid:%%b=%%b!
+:GENISONAME1
+set LanguageID=!DefaultLanguage!
+set lang=%LanguageID:~0,2%
 set tag=IR3&set tag2=ir3
-if %svcbuild% EQU 17056 set tag=IR4&set tag2=ir4
-if %svcbuild% EQU 17415 set tag=IR5&set tag2=ir5
-if %svcbuild% GTR 17415 set tag=IR6&set tag2=ir6
-if /i %arch%==x86 set archl=X86
-if /i %arch%==x86_64 set arch=x64&set archl=X64
+if %ServicePackBuild% EQU 17056 set tag=IR4&set tag2=ir4
+if %ServicePackBuild% EQU 17415 set tag=IR5&set tag2=ir5
+if %ServicePackBuild% GTR 17415 set tag=IR6&set tag2=ir6
+if /i %Architecture%==x86_64 set arch=x64
+if /i %Architecture%==x86 set arch=x86
+if /i %LanguageID%==en-gb set lang=en-gb
+if /i %LanguageID%==es-mx set lang=es-mx
+if /i %LanguageID%==fr-ca set lang=fr-ca
+if /i %LanguageID%==pt-pt set lang=pp
+if /i %LanguageID%==sr-latn-rs set lang=sr-latn
+if /i %LanguageID%==zh-cn set lang=cn
+if /i %LanguageID%==zh-tw set lang=tw
+if /i %LanguageID%==zh-hk set lang=hk
+for %%b in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set LanguageID=!LanguageID:%%b=%%b!
 set DVDISO=%lang%_windows_8.1_%tag2%_%arch%_dvd.iso
-if /i %editionid%==Core set DVDISO=%lang%_windows_8.1_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreN set DVDISO=%lang%_windows_8.1_n_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreSingleLanguage set DVDISO=%lang%_windows_8.1_singlelanguage_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreCountrySpecific set DVDISO=%lang%_windows_8.1_china_%tag2%_%arch%_dvd.iso
-if /i %editionid%==Professional set DVDISO=%lang%_windows_8.1_pro_%tag2%_%arch%_dvd.iso
-if /i %editionid%==ProfessionalN set DVDISO=%lang%_windows_8.1_pro_n_%tag2%_%arch%_dvd.iso
-if /i %editionid%==ProfessionalWMC set DVDISO=%lang%_windows_8.1_pro_wmc_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreConnected set DVDISO=%lang%_windows_8.1_with_bing_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreConnectedN set DVDISO=%lang%_windows_8.1_n_with_bing_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreConnectedSingleLanguage set DVDISO=%lang%_windows_8.1_singlelanguage_with_bing_%tag2%_%arch%_dvd.iso
-if /i %editionid%==CoreConnectedCountrySpecific set DVDISO=%lang%_windows_8.1_china_with_bing_%tag2%_%arch%_dvd.iso
-if /i %editionid%==ProfessionalStudent set DVDISO=%lang%_windows_8.1_pro_student_%tag2%_%arch%_dvd.iso
-if /i %editionid%==ProfessionalStudentN set DVDISO=%lang%_windows_8.1_pro_student_n_%tag2%_%arch%_dvd.iso
-if %build% GTR 9600 (
-	set DVDISO=%lang%_windows_10_%build%_%arch%_dvd.iso
-	if /i %editionid%==Core set DVDISO=%lang%_windows_10_core_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_%build%_%arch%_dvd.iso
-	if /i %editionid%==Professional set DVDISO=%lang%_windows_10_pro_%build%_%arch%_dvd.iso
-	if /i %editionid%==Enterprise set DVDISO=%lang%_windows_10_enterprise_%build%_%arch%_dvd.iso
+if /i %EditionID%==Core set DVDISO=%lang%_windows_8.1_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreN set DVDISO=%lang%_windows_8.1_n_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreSingleLanguage set DVDISO=%lang%_windows_8.1_singlelanguage_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreCountrySpecific set DVDISO=%lang%_windows_8.1_china_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==Professional set DVDISO=%lang%_windows_8.1_pro_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==ProfessionalN set DVDISO=%lang%_windows_8.1_pro_n_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==ProfessionalWMC set DVDISO=%lang%_windows_8.1_pro_wmc_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreConnected set DVDISO=%lang%_windows_8.1_with_bing_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreConnectedN set DVDISO=%lang%_windows_8.1_n_with_bing_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreConnectedSingleLanguage set DVDISO=%lang%_windows_8.1_singlelanguage_with_bing_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==CoreConnectedCountrySpecific set DVDISO=%lang%_windows_8.1_china_with_bing_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==ProfessionalStudent set DVDISO=%lang%_windows_8.1_pro_student_%tag2%_%arch%_dvd.iso
+if /i %EditionID%==ProfessionalStudentN set DVDISO=%lang%_windows_8.1_pro_student_n_%tag2%_%arch%_dvd.iso
+
+if %Build% GTR 9600 (
+	set DVDISO=%lang%_windows_10_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Core set DVDISO=%lang%_windows_10_core_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Professional set DVDISO=%lang%_windows_10_pro_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Enterprise set DVDISO=%lang%_windows_10_enterprise_%Build%_%arch%_dvd.iso
 )
-if %build% GEQ 9896 (
-	set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Core set DVDISO=%lang%_windows_10_core_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Professional set DVDISO=%lang%_windows_10_pro_technical_preview_%build%_%arch%_dvd.iso
-	if /i %editionid%==Enterprise set DVDISO=%lang%_windows_10_enterprise_technical_preview_%build%_%arch%_dvd.iso
+
+if %Build% GEQ 9896 (
+	set DVDISO=%lang%_windows_10_technical_preview_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Core set DVDISO=%lang%_windows_10_core_technical_preview_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_technical_preview_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Professional set DVDISO=%lang%_windows_10_pro_technical_preview_%Build%_%arch%_dvd.iso
+	if /i %EditionID%==Enterprise set DVDISO=%lang%_windows_10_enterprise_technical_preview_%Build%_%arch%_dvd.iso
 )
-if %build% GTR 10066 (
-	set DVDISO=Windows10_InsiderPreview_%arch%_%lang%_%build%.iso
-	if /i %editionid%==Core set DVDISO=Windows10_Core_InsiderPreview_%arch%_%lang%_%build%.iso
-	if /i %editionid%==CoreSingleLanguage set DVDISO=Windows10_SingleLanguage_InsiderPreview_%arch%_%lang%_%build%.iso
-	if /i %editionid%==CoreCountrySpecific set DVDISO=Windows10_China_InsiderPreview_%arch%_%lang%_%build%.iso
-	if /i %editionid%==Professional set DVDISO=Windows10_Pro_InsiderPreview_%arch%_%lang%_%build%.iso
-	if /i %editionid%==Enterprise set DVDISO=Windows10_Enterprise_InsiderPreview_%arch%_%lang%_%build%.iso
+
+if %Build% GTR 10066 (
+	set DVDISO=Windows10_InsiderPreview_%arch%_%lang%_%Build%.iso
+	if /i %EditionID%==Core set DVDISO=Windows10_Core_InsiderPreview_%arch%_%lang%_%Build%.iso
+	if /i %EditionID%==CoreSingleLanguage set DVDISO=Windows10_SingleLanguage_InsiderPreview_%arch%_%lang%_%Build%.iso
+	if /i %EditionID%==CoreCountrySpecific set DVDISO=Windows10_China_InsiderPreview_%arch%_%lang%_%Build%.iso
+	if /i %EditionID%==Professional set DVDISO=Windows10_Pro_InsiderPreview_%arch%_%lang%_%Build%.iso
+	if /i %EditionID%==Enterprise set DVDISO=Windows10_Enterprise_InsiderPreview_%arch%_%lang%_%Build%.iso
 )
-if %build% GEQ 10100 (
-	if %build% LSS 10104 (
-		set DVDISO=%lang%_windows_10_technical_preview_%build%_%arch%_dvd.iso
-		if /i %editionid%==Core set DVDISO=%lang%_windows_10_core_technical_preview_%build%_%arch%_dvd.iso
-		if /i %editionid%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%build%_%arch%_dvd.iso
-		if /i %editionid%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_technical_preview_%build%_%arch%_dvd.iso
-		if /i %editionid%==Professional set DVDISO=%lang%_windows_10_pro_technical_preview_%build%_%arch%_dvd.iso
-		if /i %editionid%==Enterprise set DVDISO=%lang%_windows_10_enterprise_technical_preview_%build%_%arch%_dvd.iso
+
+if %Build% GEQ 10100 (
+	if %Build% LSS 10104 (
+		set DVDISO=%lang%_windows_10_technical_preview_%Build%_%arch%_dvd.iso
+		if /i %EditionID%==Core set DVDISO=%lang%_windows_10_core_technical_preview_%Build%_%arch%_dvd.iso
+		if /i %EditionID%==CoreSingleLanguage set DVDISO=%lang%_windows_10_singlelanguage_technical_preview_%Build%_%arch%_dvd.iso
+		if /i %EditionID%==CoreCountrySpecific set DVDISO=%lang%_windows_10_china_technical_preview_%Build%_%arch%_dvd.iso
+		if /i %EditionID%==Professional set DVDISO=%lang%_windows_10_pro_technical_preview_%Build%_%arch%_dvd.iso
+		if /i %EditionID%==Enterprise set DVDISO=%lang%_windows_10_enterprise_technical_preview_%Build%_%arch%_dvd.iso
 	)
 )
-call :GETLABEL "%~1"
 exit /b
 
-
-:GETNAMES2
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
-"%wimlib%">nul extract "%~1" 1 sources\idwbinfo.txt
-for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" "idwbinfo.txt"') do @set BuildBranch=%%a
-for /f "tokens=2 delims==" %%a in ('find "BuildType=" "idwbinfo.txt"') do @set BuildType=%%a
-del>nul idwbinfo.txt
-"%wimlib%">nul extract "%~1" 1 setup.exe
-for /f "tokens=2 delims=:()%BuildBranch%" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate=%%a
-del>nul setup.exe
-set CompileDate=%CompileDate:.=%
-if /i %arch%==x86 set archl=X86
-if /i %arch%==x86_64 set arch=x64&set archl=X64
-if /i %editionid%==Core set editionid=CLIENTCORE_RET
-if /i %editionid%==CoreSingleLanguage set editionid=CLIENTSINGLELANGUAGE_RET
-if /i %editionid%==CoreCountrySpecific set editionid=CLIENTCHINA_RET
-if /i %editionid%==Professional set editionid=CLIENTPRO_RET
-if /i %editionid%==Enterprise set editionid=CLIENTENTERPRISE_VOL
-set FILENAME=%build%.%svcbuild%.%CompileDate%.%BuildBranch%_%editionid%_%arch%%BuildType%_%langid%.iso
+:GENISONAME2
+if /i %Architecture%==x86_64 set arch=x64
+if /i %Architecture%==x86 set arch=x86
+if /i %EditionID%==Core set EditionID=CLIENTCORE_RET
+if /i %EditionID%==CoreSingleLanguage set EditionID=CLIENTSINGLELANGUAGE_RET
+if /i %EditionID%==CoreCountrySpecific set EditionID=CLIENTCHINA_RET
+if /i %EditionID%==Professional set EditionID=CLIENTPRO_RET
+if /i %EditionID%==Enterprise set EditionID=CLIENTENTERPRISE_VOL
+set FILENAME=%Build%.%ServicePackBuild%.%CompileDate%.%BuildBranch%_%EditionID%_%arch%%BuildType%_%DefaultLanguage%.iso
 call :UCase FILENAME DVDISO
-call :GETLABEL "%~1"
 exit /b
 
-:GETNAMES3
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
-set lang=%langid:~0,2%
-if /i %langid%==en-gb set lang=en-gb
-if /i %langid%==es-mx set lang=es-mx
-if /i %langid%==fr-ca set lang=fr-ca
-if /i %langid%==pt-pt set lang=pp
-if /i %langid%==sr-latn-rs set lang=sr-latn
-if /i %langid%==zh-cn set lang=cn
-if /i %langid%==zh-tw set lang=tw
-if /i %langid%==zh-hk set lang=hk
-"%wimlib%">nul extract "%~1" 1 sources\idwbinfo.txt
-for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" "idwbinfo.txt"') do @set BuildBranch=%%a
-for /f "tokens=2 delims==" %%a in ('find "BuildType=" "idwbinfo.txt"') do @set BuildType=%%a
-del>nul idwbinfo.txt
-"%wimlib%">nul extract "%~1" 1 setup.exe
-for /f "tokens=2 delims=:()%BuildBranch%" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate=%%a
-del>nul setup.exe
-set CompileDate=%CompileDate:.=%
-if /i %arch%==x86 set archl=X86
-if /i %arch%==x86_64 set arch=x64&set archl=X64
-call :LCase editionid edition
-call :LCase langid langid
-set DVDISO=%lang%_%build%.%svcbuild%.%CompileDate%_%arch%%BuildType%_%edition%_%langid%_%editionid%-
-if "%edition%"=="enterprise" set DVDISO=%lang%_%build%.%svcbuild%.%CompileDate%_%arch%%BuildType%_%edition%_%langid%_VL_%editionid%-
-if "%edition%"=="enterprisen" set DVDISO=%lang%_%build%.%svcbuild%.%CompileDate%_%arch%%BuildType%_%edition%_%langid%_VL_%editionid%-
-call :GETLABEL "%~1"
+:GENISONAME3
+set LanguageID=!DefaultLanguage!
+set lang=%LanguageID:~0,2%
+if /i %Architecture%==x86_64 set arch=x64
+if /i %Architecture%==x86 set arch=x86
+if /i %LanguageID%==en-gb set lang=en-gb
+if /i %LanguageID%==es-mx set lang=es-mx
+if /i %LanguageID%==fr-ca set lang=fr-ca
+if /i %LanguageID%==pt-pt set lang=pp
+if /i %LanguageID%==sr-latn-rs set lang=sr-latn
+if /i %LanguageID%==zh-cn set lang=cn
+if /i %LanguageID%==zh-tw set lang=tw
+if /i %LanguageID%==zh-hk set lang=hk
+call :LCase EditionID edition
+call :LCase LanguageID LanguageID
+call :LCase lang lang
+set DVDISO=%lang%_%Build%.%ServicePackBuild%.%CompileDate%_%arch%%BuildType%_%edition%_%LanguageID%_%EditionID%-
+if "%edition%"=="enterprise" set DVDISO=%lang%_%Build%.%ServicePackBuild%.%CompileDate%_%arch%%BuildType%_%edition%_%LanguageID%_VL_%EditionID%-
+if "%edition%"=="enterprisen" set DVDISO=%lang%_%Build%.%ServicePackBuild%.%CompileDate%_%arch%%BuildType%_%edition%_%LanguageID%_VL_%EditionID%-
 set DVDISO=%DVDISO%%DVDLABEL%.iso
-exit /b
-
-:GETLABEL
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Architecture"') do set arch=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Edition"') do set editionid=%%i
-for /f "tokens=3 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Default"') do set langid=%%i
-for /f "tokens=2 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| findstr /b "Build"') do set build=%%i
-for /f "tokens=4 delims=: " %%i in ('%wimlib% info "%~1" 4 ^| find /i "Service Pack Build"') do set svcbuild=%%i
-for %%b in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set langid=!langid:%%b=%%b!
-set tag=IR3&set tag2=ir3
-if %svcbuild% EQU 17056 set tag=IR4&set tag2=ir4
-if %svcbuild% EQU 17415 set tag=IR5&set tag2=ir5
-if %svcbuild% GTR 17415 set tag=IR6&set tag2=ir6
-if /i %arch%==x86 set archl=X86
-if /i %arch%==x86_64 set arch=x64&set archl=X64
-set DVDLABEL=%tag%_CCSA_%archl%FRER_%langid%_DV9
-if /i %editionid%==Core set DVDLABEL=%tag%_CCRA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreN set DVDLABEL=%tag%_CCRNA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreSingleLanguage set DVDLABEL=%tag%_CSLA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreCountrySpecific set DVDLABEL=%tag%_CCHA_%archl%FRER_%langid%_DV9
-if /i %editionid%==Professional set DVDLABEL=%tag%_CPRA_%archl%FRER_%langid%_DV9
-if /i %editionid%==ProfessionalN set DVDLABEL=%tag%_CPRNA_%archl%FRER_%langid%_DV9
-if /i %editionid%==ProfessionalWMC set DVDLABEL=%tag%_CPWMCA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreConnected set DVDLABEL=%tag%_CCONA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreConnectedN set DVDLABEL=%tag%_CCONNA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreConnectedSingleLanguage set DVDLABEL=%tag%_CCSLA_%archl%FRER_%langid%_DV9
-if /i %editionid%==CoreConnectedCountrySpecific set DVDLABEL=%tag%_CCCHA_%archl%FRER_%langid%_DV9
-if /i %editionid%==ProfessionalStudent set DVDLABEL=%tag%_CPRSA_%archl%FRER_%langid%_DV9
-if /i %editionid%==ProfessionalStudentN set DVDLABEL=%tag%_CPRSNA_%archl%FRER_%langid%_DV9
-if %build% GTR 9600 (
-	set DVDLABEL=JM1_CCSA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==Core set DVDLABEL=JM1_CCRA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==CoreSingleLanguage set DVDLABEL=JM1_CSLA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==CoreCountrySpecific set DVDLABEL=JM1_CCHA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==Professional set DVDLABEL=JM1_CPRA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==Enterprise set DVDLABEL=JM1_CENA_%archl%FREV_%langid%_DV5
-)
-if %build% GEQ 9896 (
-	set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5
-)
-if %build% GTR 10066 (
-	set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5
-	if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5
-	if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5
-)
-if %build% GEQ 10100 (
-	if %build% LSS 10104 (
-		set DVDLABEL=J_CCSA_%archl%FRE_%langid%_DV5
-		if /i %editionid%==Core set DVDLABEL=J_CCRA_%archl%FRE_%langid%_DV5
-		if /i %editionid%==CoreSingleLanguage set DVDLABEL=J_CSLA_%archl%FRER_%langid%_DV5
-		if /i %editionid%==CoreCountrySpecific set DVDLABEL=J_CCHA_%archl%FRER_%langid%_DV5
-		if /i %editionid%==Professional set DVDLABEL=J_CPRA_%archl%FRE_%langid%_DV5
-		if /i %editionid%==Enterprise set DVDLABEL=J_CENA_%archl%FREV_%langid%_DV5
-	)
-)
 exit /b
 
 :LCase
@@ -486,6 +492,25 @@ IF /I "%0"==":UCase" SET _Abet=%_UCase%
 IF /I "%0"==":LCase" SET _Abet=%_LCase%
 FOR %%Z IN (%_Abet%) DO SET _Lib_UCase_Tmp=!_Lib_UCase_Tmp:%%Z=%%Z!
 SET %2=%_Lib_UCase_Tmp%
+exit /b
+
+:StartTimer
+set StartTIME=%TIME%
+for /f "usebackq tokens=1-4 delims=:., " %%f in (`echo %StartTIME: =0%`) do set /a Start100S=1%%f*360000+1%%g*6000+1%%h*100+1%%i-36610100
+exit /b
+
+:StopTimer
+set StopTIME=%TIME%
+for /f "usebackq tokens=1-4 delims=:., " %%f in (`echo %StopTIME: =0%`) do set /a Stop100S=1%%f*360000+1%%g*6000+1%%h*100+1%%i-36610100
+if %Stop100S% LSS %Start100S% set /a Stop100S+=8640000
+set /a TookTime=%Stop100S%-%Start100S%
+set TookTimePadded=0%TookTime%
+exit /b
+
+:DisplayTimerResult
+echo Started: %StartTime%
+echo Stopped: %StopTime%
+echo Elapsed: %TookTime:~0,-2%.%TookTimePadded:~-2% seconds
 exit /b
 
 :error
