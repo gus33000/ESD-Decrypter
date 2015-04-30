@@ -592,6 +592,11 @@ echo         /DeleteESD       Flag to tell the script to delete the esd files af
 echo         /Scheme ^<SchemeNumber^> 1 for common filenames
 echo                                2 for Windows Build Lab styled filenames
 echo                                3 for Windows 7 Styled filenames
+echo      Scheme samples :
+echo.
+echo         1. en-gb_windows_10_enterprise_technical_preview_10061_x64_dvd.iso
+echo         2. 10061.0.150410-2039.FBL_IMPRESSIVE_CLIENTENTERPRISE_VOL_X64FRE_EN-GB.ISO
+echo         3. en-gb_10061.0.150410-2039_x64fre_enterprise_en-gb_VL_Enterprise-J_CENA_X64FREV_EN-GB_DV5.iso
 echo.
 echo      Options marked with (*) are required
 echo.
