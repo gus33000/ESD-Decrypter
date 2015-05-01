@@ -17,7 +17,7 @@ if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1018
+set curver=1019
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
@@ -127,7 +127,7 @@ if not exist "%wimlib%" (
 )
 
 "%wimlib%" info "%ESD%" 4 1>nul 2>nul
-IF %ERRORLEVEL% EQU 74 call :Decrypt "%ESD%" %key%
+IF %ERRORLEVEL% EQU 74 call :Decrypt "%ESD%" %4 %key%
 IF %ERRORLEVEL% NEQ 0 (
 	echo [Critical] The filename is missing or damaged.
 	echo [Critical] Error code : %ERRORLEVEL%
