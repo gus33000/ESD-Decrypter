@@ -138,10 +138,10 @@ if not exist "%wimlib%" (
 )
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	"%wimlib%" info "%%f" 4 1>nul 2>nul
-	IF %ERRORLEVEL% EQU 74 call :Decrypt "%%f" %4 %key%
-	IF %ERRORLEVEL% NEQ 0 (
+	IF !ERRORLEVEL! EQU 74 call :Decrypt "%%f" %4 %key%
+	IF !ERRORLEVEL! NEQ 0 (
 		echo [Critical] The filename is missing or damaged.
-		echo [Critical] Error code : %ERRORLEVEL%
+		echo [Critical] Error code : !ERRORLEVEL!
 		goto error
 		exit /b
 	)
@@ -231,7 +231,7 @@ if "%~4"=="YES" (
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		IF EXIST "%%f.bak" (
 			del /f /q "%%f" >nul 2>&1
-			ren "%%f.bak" "%%f"
+			ren "%%~f.bak" "%%~f"
 		)
 	)
 )
@@ -271,7 +271,7 @@ echo>>%temp%\getfiles.vbs s = Split(strInput,"*")
 echo>>%temp%\getfiles.vbs For Each i In s
 echo>>%temp%\getfiles.vbs  WScript.Echo i
 echo>>%temp%\getfiles.vbs Next
-for /f "delims=*" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
+for /f "delims=" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
 	set /a counter2+=1
 	set "ESD2[!counter2!]=%%f"
 )
@@ -292,22 +292,24 @@ for /l %%n in (1 1 %counter2%) do (
 		set "!param![%%n]=!var!"
 	)
 )
+
 for /l %%n in (1 1 %counter2%) do (
 	Echo [Info] Detailed ESD Information for :
 	echo.
-	for /f %%f in ('echo !ESD2[%%n]!') do echo %%~xnf
+	for /f "delims=" %%f in ('echo !ESD2[%%n]!') do echo %%~xnf
+	if /i !Architecture[%%n]!==x86 set arch=x86&archl=X86
+	if /i !Architecture[%%n]!==x86_64 set arch=x64&set archl=X64
 	Echo.
 	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
 	echo [Info] Build : !Build[%%n]!.!ServicePackBuild[%%n]!.!CompileDate[%%n]!
 	echo [Info] Build Branch : !BuildBranch[%%n]!
 	echo [Info] Build Type : !BuildType[%%n]!
-	echo [Info] Architecture : !arch[%%n]!
+	echo [Info] Architecture : !arch!
 	echo [Info] Edition : !EditionID[%%n]!
 	echo [Info] Language : !DefaultLanguage[%%n]!
 	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
 	echo.
 )
-pause
 
 set LanguageID=!DefaultLanguage[1]!
 for %%b in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set LanguageID=!LanguageID:%%b=%%b!
@@ -491,8 +493,6 @@ if not "%counter2%"=="1" (
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
 set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_%Edition%_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
-echo %FILENAME%
-pause
 call :UCase FILENAME DVDISO
 exit /b
 
