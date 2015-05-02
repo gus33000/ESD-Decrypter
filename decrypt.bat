@@ -187,18 +187,18 @@ set FILENAME=!Build[%CHOICE%]!.!ServicePackBuild[%CHOICE%]!.!CompileDate!.!Build
 call :LCase FILENAME DVDESD
 echo [Info] Capturing "Windows Setup Media"...
 echo.
-%wimlib% capture .\ISOExtract !DVDESD! "Windows Setup Media" "Windows Setup Media" --compress=XPRESS
+%wimlib% capture .\ISOExtract !DVDESD! "Windows Setup Media" "Windows Setup Media" --compress=LZMS --solid
 echo.
 rmdir /Q /S .\ISOExtract
 echo [Info] Exporting "Microsoft Windows PE"...
 echo.
-%wimlib% export .\WIMExtract\sources\boot.wim 1 !DVDESD! --compress=XPRESS
+%wimlib% export .\WIMExtract\sources\boot.wim 1 !DVDESD! --compress=LZMS --solid
 echo.
-%wimlib% export .\WIMExtract\sources\boot.wim 2 !DVDESD! --compress=XPRESS
+%wimlib% export .\WIMExtract\sources\boot.wim 2 !DVDESD! --compress=LZMS --solid
 echo.
 echo [Info] Exporting "Microsoft Windows Image"...
 echo.
-%wimlib% export .\WIMExtract\sources\install.wim !CHOICE! !DVDESD! --compress=XPRESS
+%wimlib% export .\WIMExtract\sources\install.wim !CHOICE! !DVDESD! --compress=LZMS --solid
 echo.
 rmdir /Q /S .\WIMExtract
 exit /b
