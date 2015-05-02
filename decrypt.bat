@@ -146,6 +146,7 @@ for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		exit /b
 	)
 )
+echo.
 if %6 EQU 0 call :GETESDINFO "%ESD%" 1
 if %6 GTR 3 call :GETESDINFO "%ESD%" 1
 if not %6 GTR 3 call :GETESDINFO "%ESD%" %6
@@ -479,51 +480,71 @@ exit /b
 if not "%counter2%"=="1" (
 	for /l %%n in (1 1 %counter2%) do (
 		if "!Edition!"=="" (
-			if /i !EditionID[%%n]!==Core set Edition=CLIENTCORE_RET
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=CLIENTSINGLELANGUAGE_RET
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=CLIENTCHINA_RET
-			if /i !EditionID[%%n]!==Professional set Edition=CLIENTPRO_RET
-			if /i !EditionID[%%n]!==Enterprise set Edition=CLIENTENTERPRISE_VOL
+			if /i !EditionID[%%n]!==Core set Edition=CORE
+			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
+			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=CHINA
+			if /i !EditionID[%%n]!==Professional set Edition=PRO
+			if /i !EditionID[%%n]!==Enterprise set Edition=ENTERPRISE
+			if /i !EditionID[%%n]!==Core set Licensing=RET
+			if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=RET
+			if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=RET
+			if /i !EditionID[%%n]!==Professional set Licensing=RET
+			if /i !EditionID[%%n]!==Enterprise set Licensing=VOL
 		) else (
-			if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE_RET
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE_RET
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=!Edition!-CHINA_RET
-			if /i !EditionID[%%n]!==Professional set Edition=!Edition!-PRO_RET
-			if /i !EditionID[%%n]!==Enterprise set Edition=!Edition!-ENTERPRISE_VOL
+			if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE
+			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE
+			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=!Edition!-CHINA
+			if /i !EditionID[%%n]!==Professional set Edition=!Edition!-PRO
+			if /i !EditionID[%%n]!==Enterprise set Edition=!Edition!-ENTERPRISE
+			if /i !EditionID[%%n]!==Core set Licensing=!Licensing!-RET
+			if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=!Licensing!-RET
+			if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=!Licensing!-RET
+			if /i !EditionID[%%n]!==Professional set Licensing=!Licensing!-RET
+			if /i !EditionID[%%n]!==Enterprise set Licensing=!Licensing!-VOL
 		)
 	)
 ) else (
-	if /i %EditionID[1]%==Core set Edition=CLIENTCORE_RET
-	if /i %EditionID[1]%==CoreSingleLanguage set Edition=CLIENTSINGLELANGUAGE_RET
-	if /i %EditionID[1]%==CoreCountrySpecific set Edition=CLIENTCHINA_RET
-	if /i %EditionID[1]%==Professional set Edition=CLIENTPRO_RET
-	if /i %EditionID[1]%==Enterprise set Edition=CLIENTENTERPRISE_VOL
+	if /i %EditionID[1]%==Core set Edition=CORE
+	if /i %EditionID[1]%==CoreSingleLanguage set Edition=SINGLELANGUAGE
+	if /i %EditionID[1]%==CoreCountrySpecific set Edition=CHINA
+	if /i %EditionID[1]%==Professional set Edition=PRO
+	if /i %EditionID[1]%==Enterprise set Edition=ENTERPRISE
+	if /i !EditionID[1]!==Core set Licensing=RET
+	if /i !EditionID[1]!==CoreSingleLanguage set Licensing=RET
+	if /i !EditionID[1]!==CoreCountrySpecific set Licensing=RET
+	if /i !EditionID[1]!==Professional set Licensing=RET
+	if /i !EditionID[1]!==Enterprise set Licensing=VOL
 )
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
-set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_!Edition!_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
+set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_CLIENT!Edition!_!Licensing!_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
 call :UCase FILENAME DVDISO
 exit /b
 
 :GENISONAME3
 set LanguageID=!DefaultLanguage[1]!
-set lang=%LanguageID:~0,2%
+set lang=!LanguageID:~0,2!
+if /i %LanguageID%==en-gb set lang=en-gb
+if /i %LanguageID%==es-mx set lang=es-mx
+if /i %LanguageID%==fr-ca set lang=fr-ca
+if /i %LanguageID%==pt-pt set lang=pp
+if /i %LanguageID%==sr-latn-rs set lang=sr-latn
+if /i %LanguageID%==zh-cn set lang=cn
+if /i %LanguageID%==zh-tw set lang=tw
+if /i %LanguageID%==zh-hk set lang=hk
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
-if /i %LanguageID[1]%==en-gb set lang=en-gb
-if /i %LanguageID[1]%==es-mx set lang=es-mx
-if /i %LanguageID[1]%==fr-ca set lang=fr-ca
-if /i %LanguageID[1]%==pt-pt set lang=pp
-if /i %LanguageID[1]%==sr-latn-rs set lang=sr-latn
-if /i %LanguageID[1]%==zh-cn set lang=cn
-if /i %LanguageID[1]%==zh-tw set lang=tw
-if /i %LanguageID[1]%==zh-hk set lang=hk
-call :LCase EditionID[1] edition
-call :LCase LanguageID[1] Language
+set EditionID=
+for /l %%n in (1 1 %counter2%) do (
+	if "%EditionID%"=="" set EditionID=!EditionID[%%n]!
+	if not "%EditionID%"=="" set EditionID=!EditionID!-!EditionID[%%n]!
+)
+call :LCase EditionID edition
+call :LCase LanguageID Language
 call :LCase lang lang
-set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%%BuildType[1]%_%edition%_%Language%_%EditionID[1]%-
-if "%edition%"=="enterprise" set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%%BuildType[1]%_%edition%_%Language%_VL_%EditionID[1]%-
-if "%edition%"=="enterprisen" set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%%BuildType[1]%_%edition%_%Language%_VL_%EditionID[1]%-
+set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%%BuildType[1]%_%edition%_%Language%_%EditionID%-
+if "%edition%"=="enterprise" set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%!BuildType[1]!_%edition%_%Language%_VL_%EditionID%-
+if "%edition%"=="enterprisen" set DVDISO=%lang%_%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%_%arch%!BuildType[1]!_%edition%_%Language%_VL_%EditionID%-
 set DVDISO=%DVDISO%%DVDLABEL%.iso
 exit /b
 
