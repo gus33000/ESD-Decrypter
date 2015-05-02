@@ -13,7 +13,6 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
-exit /b
 if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
