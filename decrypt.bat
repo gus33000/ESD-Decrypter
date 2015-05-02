@@ -207,6 +207,15 @@ if "%MODE%"=="ESD" (
 		)
 	)
 )
+for /l %%n in (1 1 %counter%) do (
+	if /i !EditionID[%%n]!==ProfessionalWMC (
+		Echo.
+		echo [Info] Integrating Generic WMC Tokens
+		Echo.
+		if %MODE%==WIM "%wimlib%" update ISOFOLDER\sources\install.wim %%n <bin\wim-update.txt 1>nul 2>nul
+		if %MODE%==ESD "%wimlib%" update ISOFOLDER\sources\install.esd %%n <bin\wim-update.txt 1>nul 2>nul
+	)
+)
 Echo.
 echo [Info] Creating ISO file...
 reg copy "HKCU\Control Panel\International" "HKCU\Control Panel\International-Temp" /f >nul
