@@ -182,8 +182,8 @@ IF %ERRORTEMP% NEQ 0 (
 if "%MODE%"=="WIM" (
 	Echo.
 	echo [Info] Creating install.wim file...
-	Echo.
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
+		Echo.
 		"%wimlib%" export "%%f" 4 ISOFOLDER\sources\install.wim --compress=maximum
 		SET ERRORTEMP=%ERRORLEVEL%
 		IF %ERRORTEMP% NEQ 0 (
@@ -469,18 +469,18 @@ exit /b
 :GENISONAME2
 if not "%counter2%"=="1" (
 	for /l %%n in (1 1 %counter2%) do (
-		if "%Edition%"=="" (
+		if "!Edition!"=="" (
 			if /i !EditionID[%%n]!==Core set Edition=CLIENTCORE_RET
 			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=CLIENTSINGLELANGUAGE_RET
 			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=CLIENTCHINA_RET
 			if /i !EditionID[%%n]!==Professional set Edition=CLIENTPRO_RET
 			if /i !EditionID[%%n]!==Enterprise set Edition=CLIENTENTERPRISE_VOL
 		) else (
-			if /i !EditionID[%%n]!==Core set Edition=%Edition%-CORE_RET
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=%Edition%-SINGLELANGUAGE_RET
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=%Edition%-CHINA_RET
-			if /i !EditionID[%%n]!==Professional set Edition=%Edition%-PRO_RET
-			if /i !EditionID[%%n]!==Enterprise set Edition=%Edition%-ENTERPRISE_VOL
+			if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE_RET
+			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE_RET
+			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=!Edition!-CHINA_RET
+			if /i !EditionID[%%n]!==Professional set Edition=!Edition!-PRO_RET
+			if /i !EditionID[%%n]!==Enterprise set Edition=!Edition!-ENTERPRISE_VOL
 		)
 	)
 ) else (
@@ -492,7 +492,7 @@ if not "%counter2%"=="1" (
 )
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
-set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_%Edition%_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
+set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_!Edition!_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
 call :UCase FILENAME DVDISO
 exit /b
 
