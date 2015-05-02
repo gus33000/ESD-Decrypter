@@ -1,0 +1,3 @@
+sources\install.wim
+sources\install.esd
+sources\boot.wim

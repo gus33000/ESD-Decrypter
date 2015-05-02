@@ -13,6 +13,7 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
+exit /b
 if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
@@ -25,6 +26,7 @@ if "%~1"=="/Mode:1" set CHOICE=WIM
 if "%~1"=="/Mode:1" goto :PARSE
 if "%~1"=="/Mode:2" set CHOICE=ESD
 if "%~1"=="/Mode:2" goto :PARSE
+if "%~1"=="/Mode:3" goto :PARSE3
 if exist "%~s1" goto AUTO
 if exist "*.esd" (for /f "delims=:" %%i in ('dir /b "*.esd"') do (call set /a _esd+=1))
 if !_esd! gtr 1 goto askesd
@@ -108,6 +110,98 @@ if "!ESD!"=="" goto help
 if "%SCHEME%"=="" set SCHEME=1
 call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %SCHEME% %KEY%
 exit /b
+
+:PARSE3
+if not exist "%~1" (
+	echo [Critical] The filename is missing.
+	exit /b
+)
+call :ISO2ESD "%~1"
+exit /b
+
+:ISO2ESD <ISO>
+set "wimlib=%~dps0bin\wimlib-imagex.exe"
+if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
+if not exist "%wimlib%" (
+	echo [Critical] %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
+	exit /b
+)
+echo [Info] Extracting Image files...
+bin\7z>nul x -y -o.\WIMExtract "%~1" -ir@bin\exclude.txt
+echo [Info] Extracting "Windows Setup Media"...
+bin\7z>nul x -y -o.\ISOExtract "%~1" -xr@bin\exclude.txt
+for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" ".\ISOExtract\sources\idwbinfo.txt"') do @set BuildBranch=%%a
+for /f "tokens=2 delims==" %%a in ('find "BuildType=" ".\ISOExtract\sources\idwbinfo.txt"') do @set BuildType=%%a
+for /f "tokens=6 delims=:.()" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('.\ISOExtract\setup.exe').FileVersion"') do set CompileDate=%%a
+for /f "tokens=4 delims=: " %%i in ('%wimlib% info ".\WIMExtract\sources\install.wim" --header ^| find /i "Image Count"') do set count=%%i
+for /l %%n in (1 1 %count%) do (
+	for /f "skip=2 delims=" %%f in ('%wimlib% info ".\WIMExtract\sources\install.wim" %%n') do (
+		for /f "tokens=1 delims=:" %%a in ('echo %%f') do set value=%%a
+		for /f "tokens=2* delims=:" %%a in ('echo %%f') do (
+			for /f "tokens=*" %%i in ('echo %%a') do set "var=%%i"
+		)
+		set param=!value: =!
+		set "!param![%%n]=!var!"
+	)
+	set "choice=!choice!%%n"
+)
+if not "%count%"=="1" (
+	echo.
+	echo Please Select which Index do you want to export to the ESD Image
+	echo 様様様様様様様様様様様様様様様様様様様様様様様様様様様様様様様様
+	echo.
+	for /l %%n in (1 1 %count%) do (
+		if /i !Architecture[%%n]!==x86 set arch=x86&archl=X86
+		if /i !Architecture[%%n]!==x86_64 set arch=x64&set archl=X64
+		if "!DisplayName[%%n]!"=="" (
+			echo [%%n] Name        : !Name[%%n]!
+			echo     Description : !Description[%%n]!
+			echo     Architecture: !arch!
+		)
+		if not "!DisplayName[%%n]!"=="" (
+			echo [%%n] Name        : !DisplayName[%%n]!
+			echo     Description : !DisplayDescription[%%n]!
+			echo     Architecture: !arch!
+		)
+	)
+	echo.
+	choice /N /C !choice! /M "Your choice : "
+	set CHOICE=!ERRORLEVEL!
+	echo.
+)
+if "%count%"=="1" set CHOICE=1
+if /i !EditionID[%CHOICE%]!==Core set Edition=CORE
+if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
+if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Edition=CHINA
+if /i !EditionID[%CHOICE%]!==Professional set Edition=PRO
+if /i !EditionID[%CHOICE%]!==Enterprise set Edition=ENTERPRISE
+if /i !EditionID[%CHOICE%]!==Core set Licensing=RET
+if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Licensing=RET
+if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Licensing=RET
+if /i !EditionID[%CHOICE%]!==Professional set Licensing=RET
+if /i !EditionID[%CHOICE%]!==Enterprise set Licensing=VOL
+if /i !Architecture[%CHOICE%]!==x86_64 set arch=x64
+if /i !Architecture[%CHOICE%]!==x86 set arch=x86
+set FILENAME=!Build[%CHOICE%]!.!ServicePackBuild[%CHOICE%]!.!CompileDate!.!BuildBranch!_CLIENT!Edition!_!Licensing!_!arch!!BuildType!_!DefaultLanguage[%CHOICE%]!.esd
+call :LCase FILENAME DVDESD
+echo [Info] Capturing "Windows Setup Media"...
+echo.
+%wimlib% capture .\ISOExtract !DVDESD! "Windows Setup Media" "Windows Setup Media" --compress=XPRESS
+echo.
+rmdir /Q /S .\ISOExtract
+echo [Info] Exporting "Microsoft Windows PE"...
+echo.
+%wimlib% export .\WIMExtract\sources\boot.wim 1 !DVDESD! --compress=XPRESS
+echo.
+%wimlib% export .\WIMExtract\sources\boot.wim 2 !DVDESD! --compress=XPRESS
+echo.
+echo [Info] Exporting "Microsoft Windows Image"...
+echo.
+%wimlib% export .\WIMExtract\sources\install.wim !CHOICE! !DVDESD! --compress=XPRESS
+echo.
+rmdir /Q /S .\WIMExtract
+exit /b
+
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <FilenameType> {key}
 Echo.
@@ -536,8 +630,8 @@ if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
 set EditionID=
 for /l %%n in (1 1 %counter2%) do (
-	if "%EditionID%"=="" set EditionID=!EditionID[%%n]!
-	if not "%EditionID%"=="" set EditionID=!EditionID!-!EditionID[%%n]!
+	if not "!EditionID!"=="" set EditionID=!EditionID!-!EditionID[%%n]!
+	if "!EditionID!"=="" set EditionID=!EditionID[%%n]!
 )
 call :LCase EditionID edition
 call :LCase LanguageID Language
@@ -676,6 +770,12 @@ echo.
 echo      where ESD is the path to the ESD file to process (*)
 echo      where Key is the complete Cryptographic RSA key used to decrypt the
 echo      ESD file
+echo.
+echo      Options marked with (*) are required
+echo.
+echo      /Mode:3 ^<ISO^> (*) - Converts a correct Windows ISO to an ESD Image.
+echo.
+echo      where ISO is the path to the Windows ISO to be converted to ESD
 echo.
 echo      Options marked with (*) are required
 echo.
