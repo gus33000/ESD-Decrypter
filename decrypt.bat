@@ -17,7 +17,7 @@ if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
 set "FILEN=%~nx0"
-set curver=1019
+set curver=1020
 call :updatesystem %*
 if "%~1"=="/noupdate" shift
 :: UPDATE SYSTEM
