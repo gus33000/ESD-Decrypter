@@ -111,6 +111,7 @@ call :ESD2ISO %CHOICE% "!ESD!" "%OUT%" %BACKUP% %DeleteESD% %SCHEME% %KEY%
 exit /b
 
 :PARSE3
+echo.
 shift
 if not exist "%~1" (
 	echo [Critical] The filename is missing.
