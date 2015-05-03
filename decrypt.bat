@@ -13,6 +13,58 @@ echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
 echo.
+Rem cursorpos and colorshow created by Antonio Perez Ayala
+Rem http://www.dostips.com/forum/viewtopic.php?f=3&t=3428
+call :heredoc cursorpos >cursorpos.hex && goto endCursorpos
+4D5A900003[3]04[3]FFFF[2]B8[7]40[35]B0[3]0E1FBA0E00B409CD21B8014CCD21546869732070726F6772616D2063616E6E6F74
+2062652072756E20696E20444F53206D6F64652E0D0D0A24[7]55B5B8FD11D4D6AE11D4D6AE11D4D6AE9FCBC5AE18D4D6AEED
+F4C4AE13D4D6AE5269636811D4D6AE[8]5045[2]4C010200EB84E24F[8]E0000F010B01050C0002[3]02[7]10[3]10[3]20[4]40[2]10
+[3]02[2]04[7]04[8]30[3]02[6]03[5]10[2]10[4]10[2]10[6]10[11]1C20[2]28[84]20[2]1C[27]2E74657874[3]4201[3]10[3]02[3]02[14]20[2]60
+2E7264617461[2]F6[4]20[3]02[3]04[14]40[2]40[8]E806[3]50E81301[2]558BEC83C4E06AF5E81201[2]8945FC8D45E650FF75FCE8
+FD[3]668B45EC668945E4E8BC[3]E8DB[3]803E0075058B45EAEB5C803E3D750646E8C6[3]668B4DEAE84A[3]8945EAE8B5[3]803E
+007418803E2C750646E8A5[3]668B4DE4E829[3]668945EC8B5DEA53FF75FCE8AE[3]8D45E650536A018D45E350FF75FCE895[3]0F
+B645E3C9C333C032DB33D28A164680FA2B740880FA2D750980CB0280CB018A164680FA30720F80FA39770A80EA306BC00A03
+C2EBE9F6C301740BF6C302740366F7D86603C14EC3CCCCCCCCCCCCCCCCCCCCCCCCCCE847[3]8BF08A06463C2275098A06463C
+2275F9EB0C8A06463C20740484C075F54EC38A06463C2074F94EC3CCFF2514204000FF2500204000FF2504204000FF250820
+4000FF250C204000FF25102040[191]6E20[2]8C20[2]9C20[2]BA20[2]D620[2]6020[6]4420[10]E820[3]20[22]6E20[2]8C20[2]9C20[2]BA
+20[2]D620[2]6020[6]9B004578697450726F6365737300F500476574436F6E736F6C6553637265656E427566666572496E666F
+[2]6A0147657453746448616E646C65[2]380252656164436F6E736F6C654F757470757443686172616374657241006D025365
+74436F6E736F6C65437572736F72506F736974696F6E[2]E600476574436F6D6D616E644C696E6541006B65726E656C33322E
+646C6C[268]
+:endCursorpos
+
+call :heredoc hexchar >hexchar.vbs && goto endHexchar
+Rem Hex digits to Ascii Characters conversion
+Rem Antonio Perez Ayala - Apr/14/2012
+
+Dim line,index,count
+line = WScript.StdIn.ReadLine()
+While line <> ""
+   index = 1
+   While index < len(line)
+      If Mid(line,index,1) = "[" Then
+         index = index+1
+         count = 0
+         While Mid(line,index+count,1) <> "]"
+            count = count+1
+         WEnd
+         For i=1 To Int(Mid(line,index,count))
+            WScript.StdOut.Write Chr(0)
+         Next
+         index = index+count+1
+      Else
+         WScript.StdOut.Write Chr(CByte("&H"&Mid(line,index,2)))
+         index = index+2
+      End If
+   WEnd
+   line = WScript.StdIn.ReadLine()
+WEnd
+:endHexchar
+
+cscript /nologo /B /E:VBS HexChar.vbs < "cursorpos.hex" > "cursorpos.exe"
+del cursorpos.hex
+del hexchar.vbs
+
 if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
@@ -205,6 +257,11 @@ exit /b
 
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <FilenameType> {key}
+echo.
+cursorpos
+call :GetCoords OCols OLines
+call :progress 0
+Echo.
 Echo.
 set "MODE=%~1"
 set "ESD=%~2"
@@ -242,6 +299,7 @@ for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	)
 )
 echo.
+call :progress 20
 if %6 EQU 0 call :GETESDINFO "%ESD%" 1
 if %6 GTR 3 call :GETESDINFO "%ESD%" 1
 if not %6 GTR 3 call :GETESDINFO "%ESD%" %6
@@ -257,6 +315,7 @@ IF %ERRORTEMP% NEQ 0 (
 	exit /b
 )
 del ISOFOLDER\MediaMeta.xml 1>nul 2>nul
+call :progress 40
 Echo.
 echo [Info] Creating boot.wim file...
 Echo.
@@ -275,6 +334,7 @@ IF %ERRORTEMP% NEQ 0 (
 	goto error
 	exit /b
 )
+call :progress 60
 if "%MODE%"=="WIM" (
 	Echo.
 	echo [Info] Creating install.wim file...
@@ -312,6 +372,7 @@ for /l %%n in (1 1 %counter%) do (
 		if %MODE%==ESD "%wimlib%" update ISOFOLDER\sources\install.esd %%n <bin\wim-update.txt 1>nul 2>nul
 	)
 )
+call :progress 80
 Echo.
 echo [Info] Creating ISO file...
 reg copy "HKCU\Control Panel\International" "HKCU\Control Panel\International-Temp" /f >nul
@@ -346,6 +407,7 @@ if "%~5"=="YES" (
 	)
 )
 echo.
+call :progress 100
 exit /b
 
 :Decrypt <ESD> <Backup(YES|NO)> {key}
@@ -786,4 +848,44 @@ echo      Place this switch at the beginning of each commands to not check for
 echo      updates : /noupdate
 echo.
 echo      To display help run the following command : /help
+exit /b
+
+:GetCoords Cols= Lines=
+set /A "%1=%errorlevel%&0xFFFF, %2=(%errorlevel%>>16)&0xFFFF"
+exit /B
+
+:heredoc <uniqueIDX>
+setlocal enabledelayedexpansion
+set go=
+for /f "delims=" %%A in ('findstr /n "^" "%~f0"') do (
+    set "line=%%A" && set "line=!line:*:=!"
+    if defined go (if #!line:~1!==#!go::=! (goto :EOF) else echo(!line!)
+    if "!line:~0,13!"=="call :heredoc" (
+        for /f "tokens=3 delims=>^ " %%i in ("!line!") do (
+            if #%%i==#%1 (
+                for /f "tokens=2 delims=&" %%I in ("!line!") do (
+                    for /f "tokens=2" %%x in ("%%I") do set "go=%%x"
+                )
+            )
+        )
+    )
+)
+goto :EOF
+
+:progress
+SETLOCAL ENABLEDELAYEDEXPANSION
+cursorpos
+call :GetCoords Cols Lines
+SET ProgressPercent=%1
+SET /A NumBars=%ProgressPercent%/2
+SET /A NumSpaces=50-%NumBars%
+SET Meter=
+FOR /L %%A IN (%NumBars%,-1,1) DO SET Meter=!Meter!=
+FOR /L %%A IN (%NumSpaces%,-1,1) DO SET Meter=!Meter! 
+cursorpos 0 !OLines!
+echo Progress:  [%Meter%]
+cursorpos 35 !OLines!
+echo %ProgressPercent%%%
+cursorpos !Cols! !Lines!
+ENDLOCAL
 exit /b
