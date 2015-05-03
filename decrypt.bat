@@ -288,6 +288,7 @@ if not exist "%wimlib%" (
 	echo [Critical] %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
 	goto error
 )
+call :progress 10
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	"%wimlib%" info "%%f" 4 1>nul 2>nul
 	IF !ERRORLEVEL! EQU 74 call :Decrypt "%%f" %4 %key%
@@ -326,6 +327,7 @@ IF %ERRORTEMP% NEQ 0 (
 	goto error
 	exit /b
 )
+call :progress 50
 echo.
 "%wimlib%" export "%ESD[1]%" 3 ISOFOLDER\sources\boot.wim --boot
 SET ERRORTEMP=%ERRORLEVEL%
@@ -392,6 +394,7 @@ IF %ERRORTEMP% NEQ 0 (
 	goto error
 	exit /b
 )
+call :progress 90
 rmdir /s /q ISOFOLDER\
 if "%~4"=="YES" (
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
