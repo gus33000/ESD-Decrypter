@@ -2,13 +2,7 @@
 @echo off
 set "params=%*"
 if not "!params!"=="" set "params=%params:"=""%"
-pushd "%cd%" && cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) && fsutil dirty query %systemdrive% >nul || if %errorlevel%==0 (  echo Set UAC = CreateObject^("Shell.Application"^) : UAC.ShellExecute "cmd.exe", "/k cd ""%~sdp0"" && ""%~s0"" %params%", "", "runas", 1 >> "%temp%\getadmin.vbs" && "%temp%\getadmin.vbs" && exit /B )
-set ESD=
-set MODE=
-set OUT=
-set wimlib=
-set KEY=
-title ESD to ISO Converter / Decrypter
+pushd "%cd%" && cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) && fsutil dirty query %systemdrive% >nul || if ERRORLEVEL==0 (  echo Set UAC = CreateObject^("Shell.Application"^) : UAC.ShellExecute "cmd.exe", "/k cd ""%~sdp0"" && ""%~s0"" %params%", "", "runas", 1 >> "%temp%\getadmin.vbs" && "%temp%\getadmin.vbs" && exit /B )
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
@@ -65,6 +59,8 @@ cscript /nologo /B /E:VBS HexChar.vbs < "cursorpos.hex" > "cursorpos.exe"
 del cursorpos.hex
 del hexchar.vbs
 
+
+:Main
 if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
 set "FILE=%~0"
@@ -255,17 +251,25 @@ echo.
 rmdir /Q /S .\WIMExtract
 exit /b
 
+:ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <Scheme> {key}
 
-:ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <FilenameType> {key}
 echo.
 cursorpos
 call :GetCoords OCols OLines
-call :progress 0
-Echo.
-Echo.
+call :Progress 0
+echo.
+echo.
+
 set "MODE=%~1"
 set "ESD=%~2"
-set "OUT=%~3"
+set "Output=%~3"
+set "Backup=%~4"
+set "DeleteESD=%~5"
+set "Scheme=%~6"
+set "Key=%~7"
+if [%Output:~-1%]==[\] set "OUT=%Output:~0,-1%"
+
+
 set counter=0
 echo>%temp%\getfiles.vbs Set objFS=CreateObject("Scripting.FileSystemObject")
 echo>>%temp%\getfiles.vbs Set objArgs = WScript.Arguments
@@ -279,99 +283,83 @@ for /f "delims=*" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
 	set "ESD[!counter!]=%%f"
 )
 del>nul %temp%\getfiles.vbs
-if [%OUT:~-1%]==[\] set "OUT=%OUT:~0,-1%"
-set "KEY=%7"
-chcp 437 >nul
+
+
+if not "!MODE!"=="WIM" if not "!MODE!"=="ESD" call :Exception MODE
+for /f "tokens=2 delims==" %%f in ('set ESD[') do (
+	if not exist "!ESD!" call :Exception ESD_Not_Found
+)
+if not exist "!Output!" mkdir "!Output!"
+if not exist "!Output!"  call :Exception Output_Not_Valid
+
+
 set "wimlib=%~dps0bin\wimlib-imagex.exe"
 if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
-if not exist "%wimlib%" (
-	echo [Critical] %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
-	goto error
+if not exist "!wimlib!" (
+	call :Exception WIMLIB_Notfound
 )
-call :progress 10
+
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
-	"%wimlib%" info "%%f" 4 1>nul 2>nul
-	IF !ERRORLEVEL! EQU 74 call :Decrypt "%%f" %4 %key%
-	IF !ERRORLEVEL! NEQ 0 (
-		echo [Critical] The filename is missing or damaged.
-		echo [Critical] Error code : !ERRORLEVEL!
-		goto error
-		exit /b
-	)
+	Echo [Info] Checking the current state of the provided ESD File...
+	"!wimlib!" info "%%f" 4 1>nul 2>nul
+	IF !ERRORLEVEL! EQU 74 call :DecryptManager "%%f" "!Backup!" "!Key!"
+	IF !ERRORLEVEL! NEQ 0 call :Exception ESD_Damaged
+	call :IsValid "%%f"
 )
-echo.
-call :progress 20
-if %6 EQU 0 call :GETESDINFO "%ESD%" 1
-if %6 GTR 3 call :GETESDINFO "%ESD%" 1
-if not %6 GTR 3 call :GETESDINFO "%ESD%" %6
+Echo [Info] Getting Informations from the provided ESD File...
+call :GETESDINFO !ESD! !Scheme!
+Echo [Info] The ISO will be saved with the following specifications :
+Echo.
+Echo [Info] Filename: !DVDISO!
+Echo [Info] Label: !DVDLABEL!
+Echo.
 echo [Info] Creating Setup Media Layout...
+
+
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 echo.
-"%wimlib%" apply "%ESD[1]%" 1 ISOFOLDER\
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (
-	echo [Critical] Errors were reported during apply.
-	goto error
-	exit /b
-)
+"!wimlib!" apply "!ESD[1]!" 1 ISOFOLDER\
+IF NOT ERRORLEVEL 0 call :Exception Apply
+Echo.
 del ISOFOLDER\MediaMeta.xml 1>nul 2>nul
 call :progress 40
-Echo.
 echo [Info] Creating boot.wim file...
 Echo.
-"%wimlib%" export "%ESD[1]%" 2 ISOFOLDER\sources\boot.wim --compress=maximum
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (
-	echo [Critical] Errors were reported during export.
-	goto error
-	exit /b
-)
+"!wimlib!" export "!ESD[1]!" 2 ISOFOLDER\sources\boot.wim --compress=maximum
+IF NOT ERRORLEVEL 0 call :Exception Export
+Echo.
 call :progress 50
 echo.
-"%wimlib%" export "%ESD[1]%" 3 ISOFOLDER\sources\boot.wim --boot
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (
-	echo [Critical] Errors were reported during export.
-	goto error
-	exit /b
-)
+"!wimlib!" export "!ESD[1]!" 3 ISOFOLDER\sources\boot.wim --boot
+IF NOT ERRORLEVEL 0 call :Exception Export
+echo.
 call :progress 60
-if "%MODE%"=="WIM" (
-	Echo.
+if "!MODE!"=="WIM" (
 	echo [Info] Creating install.wim file...
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		Echo.
-		"%wimlib%" export "%%f" 4 ISOFOLDER\sources\install.wim --compress=maximum
-		SET ERRORTEMP=%ERRORLEVEL%
-		IF %ERRORTEMP% NEQ 0 (
-			echo [Critical] Errors were reported during export.
-			goto error
-			exit /b
-		)
+		"!wimlib!" export "%%f" 4 ISOFOLDER\sources\install.wim --compress=maximum
+		IF NOT ERRORLEVEL 0 call :Exception Export
+		Echo.
 	)
 )
-if "%MODE%"=="ESD" (
-	Echo.
+if "!MODE!"=="ESD" (
 	echo [Info] Creating install.esd file...
 	Echo.
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
-		"%wimlib%" export "%%f" 4 ISOFOLDER\sources\install.esd
-		SET ERRORTEMP=%ERRORLEVEL%
-		IF %ERRORTEMP% NEQ 0 (
-			echo [Critical] Errors were reported during export.
-			goto error
-			exit /b
-		)
+		"!wimlib!" export "%%f" 4 ISOFOLDER\sources\install.esd
+		IF NOT ERRORLEVEL 0 call :Exception Export
+		Echo.
 	)
 )
 for /l %%n in (1 1 %counter%) do (
 	if /i !EditionID[%%n]!==ProfessionalWMC (
-		Echo.
 		echo [Info] Integrating Generic WMC Tokens
 		Echo.
-		if %MODE%==WIM "%wimlib%" update ISOFOLDER\sources\install.wim %%n <bin\wim-update.txt 1>nul 2>nul
-		if %MODE%==ESD "%wimlib%" update ISOFOLDER\sources\install.esd %%n <bin\wim-update.txt 1>nul 2>nul
+		if %MODE%==WIM "!wimlib!" update ISOFOLDER\sources\install.wim %%n <bin\wim-update.txt 1>nul 2>nul
+		if %MODE%==ESD "!wimlib!" update ISOFOLDER\sources\install.esd %%n <bin\wim-update.txt 1>nul 2>nul
+		Echo.
 	)
 )
 call :progress 80
@@ -386,17 +374,11 @@ set mm=%date:~5,2%
 set yyyy=%date:~0,4%
 set time=%date:~11,5%
 reg copy "HKCU\Control Panel\International-Temp" "HKCU\Control Panel\International" /f >nul
-if not exist %OUT%\nul mkdir %OUT%
-bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %OUT%\%DVDISO%
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (
-	echo [Critical] Errors were reported during ISO creation.
-	goto error
-	exit /b
-)
+bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %Output%\%DVDISO%
+IF NOT ERRORLEVEL 0 call :Exception ISO
 call :progress 90
 rmdir /s /q ISOFOLDER\
-if "%~4"=="YES" (
+if "!Backup!"=="YES" (
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		IF EXIST "%%f.bak" (
 			del /f /q "%%f" >nul 2>&1
@@ -404,35 +386,49 @@ if "%~4"=="YES" (
 		)
 	)
 )
-if "%~5"=="YES" (
+if "!DeleteESD!"=="YES" (
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		del /f /q "%%f" >nul 2>&1
 	)
 )
-echo.
 call :progress 100
 exit /b
 
-:Decrypt <ESD> <Backup(YES|NO)> {key}
-set "ESD2=%~1"
-if "%~2"=="YES" (
-	if not exist "!ESD2!.bak" (
+
+:DecryptManager <ESD> <Backup(YES|NO)> {key}
+set "ESD_=%~1"
+set "Backup_=%~2"
+set "Key_=%~3"
+if "!Backup_!"=="YES" (
+	if not exist "!ESD_!.bak" (
 		echo [Info] Backing up original esd file...
 		echo.
-		copy "!ESD2!" "!ESD2!.bak" /z
+		copy "!ESD_!" "!ESD_!.bak" /z
 		echo.
 	)
 )
 echo [Info] Running Decryption program...
-bin\esddecrypt.exe "%ESD2%" 2>"%temp%\esddecrypt.log"&&exit /b
-bin\esddecrypt.exe "%ESD2%" %2 &&exit /b
-type "%temp%\esddecrypt.log"
-echo [Critical] Errors were reported during ESD decryption.
-goto error
+bin\esddecrypt.exe "!ESD_!" 2>"%temp%\esddecrypt.log"&&exit /b
+bin\esddecrypt.exe "!ESD_!" "!Key_!" &&exit /b
+call :Exception ESD_Decrypt
+exit /b
+
+:IsValid <ESD>
+set "ESD_=%~1"
+Echo [Info] Checking Validity of the Provided ESD File...
+for /f "delims=" %%f in ('!wimlib! info "!ESD_!" --header') do (
+	for /f "tokens=1 delims=:=" %%a in ('echo %%f') do set value=%%a
+	for /f "tokens=2* delims=:=" %%a in ('echo %%f') do (
+		for /f "tokens=*" %%i in ('echo %%a') do set "var=%%i"
+	)
+	set param=!value: =!
+	set "!param!=!var!"
+)
+if not "!ImageCount!"=="4" call :Exception ESD_Damaged
 exit /b
 
 :GETESDINFO <ESD>
-set "ESD=%~1"
+set "ESD_=%~1"
 set counter2=0
 echo>%temp%\getfiles.vbs Set objFS=CreateObject("Scripting.FileSystemObject")
 echo>>%temp%\getfiles.vbs Set objArgs = WScript.Arguments
@@ -441,19 +437,19 @@ echo>>%temp%\getfiles.vbs s = Split(strInput,"*")
 echo>>%temp%\getfiles.vbs For Each i In s
 echo>>%temp%\getfiles.vbs  WScript.Echo i
 echo>>%temp%\getfiles.vbs Next
-for /f "delims=" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
+for /f "delims=" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD_%"') do (
 	set /a counter2+=1
 	set "ESD2[!counter2!]=%%f"
 )
 for /l %%n in (1 1 %counter2%) do (
-	"%wimlib%">nul extract "!ESD2[%%n]!" 1 sources\idwbinfo.txt
+	"!wimlib!">nul extract "!ESD2[%%n]!" 1 sources\idwbinfo.txt
 	for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" "idwbinfo.txt"') do @set BuildBranch[%%n]=%%a
 	for /f "tokens=2 delims==" %%a in ('find "BuildType=" "idwbinfo.txt"') do @set BuildType[%%n]=%%a
 	del>nul idwbinfo.txt
-	"%wimlib%">nul extract "!ESD2[%%n]!" 1 setup.exe
+	"!wimlib!">nul extract "!ESD2[%%n]!" 1 setup.exe
 	for /f "tokens=6 delims=:.()" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate[%%n]=%%a
 	del>nul setup.exe
-	for /f "skip=2 delims=" %%f in ('%wimlib% info "!ESD2[%%n]!" 4') do (
+	for /f "skip=2 delims=" %%f in ('!wimlib! info "!ESD2[%%n]!" 4') do (
 		for /f "tokens=1 delims=:" %%a in ('echo %%f') do set value=%%a
 		for /f "tokens=2* delims=:" %%a in ('echo %%f') do (
 			for /f "tokens=*" %%i in ('echo %%a') do set "var=%%i"
@@ -719,13 +715,92 @@ FOR %%Z IN (%_Abet%) DO SET _Lib_UCase_Tmp=!_Lib_UCase_Tmp:%%Z=%%Z!
 SET %2=%_Lib_UCase_Tmp%
 exit /b
 
-:error
-if exist ISOFOLDER\nul rmdir /s /q ISOFOLDER\
-IF EXIST "!ESD!.bak" (
-	del /f /q "!ESD!" >nul 2>&1
-	ren "!ESD!.bak" "!ESD!"
+:Exception <Exception>
+Echo.
+Echo ESD-Decrypter has stopped working with an Exception.
+Echo.
+if %~1==MODE (
+	Echo The specified Operation Mode is invalid.
+	Echo Please correct this error with the help of the help documentation by running :
+	Echo.
+	Echo %~nx0 /help
 )
+if %~1==ESD_Not_Found (
+	Echo The specified ESD File has not been found on your system.
+	Echo Please correct this error.
+)
+if %~1==Output_Not_Valid (
+	Echo The specified Output Directory is invalid.
+	Echo Please correct your path to be a valid Windows Batch Path.
+)
+if %~1==ESD_Decrypt (
+	Echo The following Errors were reported during ESD decryption :
+	Echo.
+	type "%temp%\esddecrypt.log"
+)
+if %~1==ESD_Damaged (
+	Echo The specified ESD File is damaged or not a Valid ESD File.
+)
+if %~1==WIMLIB_Notfound (
+	Echo %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
+)
+if %~1==Apply (
+	Echo Critical Errors were found after apply.
+)
+if %~1==Export (
+	Echo Critical Errors were found after export.
+)
+if %~1==ISO (
+	Echo Critical Errors were found during ISO creation.
+)
+Echo.
+goto exit
+
+:exit
+:: Clean up tasks here
 exit /b
+
+
+:GetCoords Cols= Lines=
+set /A "%1=%ERRORLEVEL%&0xFFFF, %2=(%ERRORLEVEL%>>16)&0xFFFF"
+exit /B
+
+:heredoc <uniqueIDX>
+setlocal enabledelayedexpansion
+set go=
+for /f "delims=" %%A in ('findstr /n "^" "%~f0"') do (
+    set "line=%%A" && set "line=!line:*:=!"
+    if defined go (if #!line:~1!==#!go::=! (goto :EOF) else echo(!line!)
+    if "!line:~0,13!"=="call :heredoc" (
+        for /f "tokens=3 delims=>^ " %%i in ("!line!") do (
+            if #%%i==#%1 (
+                for /f "tokens=2 delims=&" %%I in ("!line!") do (
+                    for /f "tokens=2" %%x in ("%%I") do set "go=%%x"
+                )
+            )
+        )
+    )
+)
+goto :EOF
+
+:progress
+SETLOCAL ENABLEDELAYEDEXPANSION
+cursorpos
+call :GetCoords Cols Lines
+SET ProgressPercent=%1
+SET /A NumBars=%ProgressPercent%/2
+SET /A NumSpaces=50-%NumBars%
+SET Meter=
+FOR /L %%A IN (%NumBars%,-1,1) DO SET Meter=!Meter!=
+FOR /L %%A IN (%NumSpaces%,-1,1) DO SET Meter=!Meter! 
+cursorpos 0 !OLines!
+echo Progress:  [%Meter%]
+cursorpos 35 !OLines!
+echo %ProgressPercent%%%
+cursorpos !Cols! !Lines!
+ENDLOCAL
+exit /b
+
 
 :: UPDATE SYSTEM
 :updatesystem
@@ -851,44 +926,4 @@ echo      Place this switch at the beginning of each commands to not check for
 echo      updates : /noupdate
 echo.
 echo      To display help run the following command : /help
-exit /b
-
-:GetCoords Cols= Lines=
-set /A "%1=%errorlevel%&0xFFFF, %2=(%errorlevel%>>16)&0xFFFF"
-exit /B
-
-:heredoc <uniqueIDX>
-setlocal enabledelayedexpansion
-set go=
-for /f "delims=" %%A in ('findstr /n "^" "%~f0"') do (
-    set "line=%%A" && set "line=!line:*:=!"
-    if defined go (if #!line:~1!==#!go::=! (goto :EOF) else echo(!line!)
-    if "!line:~0,13!"=="call :heredoc" (
-        for /f "tokens=3 delims=>^ " %%i in ("!line!") do (
-            if #%%i==#%1 (
-                for /f "tokens=2 delims=&" %%I in ("!line!") do (
-                    for /f "tokens=2" %%x in ("%%I") do set "go=%%x"
-                )
-            )
-        )
-    )
-)
-goto :EOF
-
-:progress
-SETLOCAL ENABLEDELAYEDEXPANSION
-cursorpos
-call :GetCoords Cols Lines
-SET ProgressPercent=%1
-SET /A NumBars=%ProgressPercent%/2
-SET /A NumSpaces=50-%NumBars%
-SET Meter=
-FOR /L %%A IN (%NumBars%,-1,1) DO SET Meter=!Meter!=
-FOR /L %%A IN (%NumSpaces%,-1,1) DO SET Meter=!Meter! 
-cursorpos 0 !OLines!
-echo Progress:  [%Meter%]
-cursorpos 35 !OLines!
-echo %ProgressPercent%%%
-cursorpos !Cols! !Lines!
-ENDLOCAL
 exit /b
