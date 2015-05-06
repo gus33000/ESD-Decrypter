@@ -282,17 +282,17 @@ for /f "delims=*" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
 )
 del>nul %temp%\getfiles.vbs
 
-if not "!MODE!"=="WIM" if not "!MODE!"=="ESD" call :Exception MODE
+if not "!MODE!"=="WIM" if not "!MODE!"=="ESD" set "Exception=MODE" && goto :Exception
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
-	if not exist "!ESD!" call :Exception ESD_Not_Found
+	if not exist "!ESD!" set "Exception=ESD_Not_Found" && goto :Exception
 )
 if not exist "!Output!" mkdir "!Output!"
-if not exist "!Output!"  call :Exception Output_Not_Valid
+if not exist "!Output!" set "Exception=Output_Not_Valid" && goto :Exception
 
 set "wimlib=%~dps0bin\wimlib-imagex.exe"
 if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
 if not exist "!wimlib!" (
-	call :Exception WIMLIB_Notfound
+	set "Exception=WIMLIB_Notfound" && goto :Exception
 )
 
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
@@ -303,7 +303,7 @@ for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	Echo [Info] Checking the current state of the provided ESD File...
 	"!wimlib!" info "%%f" 4 1>nul 2>nul
 	IF !ERRORLEVEL! EQU 74 call :DecryptManager "%%f" "!Backup!" "!Key!"
-	IF !ERRORLEVEL! NEQ 0 call :Exception ESD_Damaged
+	IF !ERRORLEVEL! NEQ 0 set "Exception=ESD_Damaged" && goto :Exception
 	call :IsValid "%%f"
 )
 Echo [Info] Getting Informations from the provided ESD File...
@@ -319,19 +319,19 @@ IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 echo.
 "!wimlib!" apply "!ESD[1]!" 1 ISOFOLDER\
-IF NOT ERRORLEVEL 0 call :Exception Apply
+IF NOT ERRORLEVEL 0 set "Exception=Apply" && goto :Exception
 Echo.
 del ISOFOLDER\MediaMeta.xml 1>nul 2>nul
 call :progress 40
 echo [Info] Creating boot.wim file...
 Echo.
 "!wimlib!" export "!ESD[1]!" 2 ISOFOLDER\sources\boot.wim --compress=maximum
-IF NOT ERRORLEVEL 0 call :Exception Export
+IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 Echo.
 call :progress 50
 echo.
 "!wimlib!" export "!ESD[1]!" 3 ISOFOLDER\sources\boot.wim --boot
-IF NOT ERRORLEVEL 0 call :Exception Export
+IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 echo.
 call :progress 60
 if "!MODE!"=="WIM" (
@@ -339,7 +339,7 @@ if "!MODE!"=="WIM" (
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		Echo.
 		"!wimlib!" export "%%f" 4 ISOFOLDER\sources\install.wim --compress=maximum
-		IF NOT ERRORLEVEL 0 call :Exception Export
+		IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 		Echo.
 	)
 )
@@ -348,7 +348,7 @@ if "!MODE!"=="ESD" (
 	Echo.
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 		"!wimlib!" export "%%f" 4 ISOFOLDER\sources\install.esd
-		IF NOT ERRORLEVEL 0 call :Exception Export
+		IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 		Echo.
 	)
 )
@@ -373,7 +373,7 @@ set yyyy=%date:~0,4%
 set time=%date:~11,5%
 reg copy "HKCU\Control Panel\International-Temp" "HKCU\Control Panel\International" /f >nul
 bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %Output%\%DVDISO%
-IF NOT ERRORLEVEL 0 call :Exception ISO
+IF NOT ERRORLEVEL 0 set "Exception=ISO" && goto :Exception
 call :progress 90
 rmdir /s /q ISOFOLDER\
 if "!Backup!"=="YES" (
@@ -407,7 +407,7 @@ if "!Backup_!"=="YES" (
 echo [Info] Running Decryption program...
 bin\esddecrypt.exe "!ESD_!" 2>"%temp%\esddecrypt.log"&&exit /b
 bin\esddecrypt.exe "!ESD_!" "!Key_!" &&exit /b
-call :Exception ESD_Decrypt
+set "Exception=ESD_Decrypt" && goto :Exception
 exit /b
 
 :IsValid <ESD>
@@ -421,7 +421,7 @@ for /f "delims=" %%f in ('!wimlib! info "!ESD_!" --header') do (
 	set param=!value: =!
 	set "!param!=!var!"
 )
-if not "!ImageCount!"=="4" call :Exception ESD_Damaged
+if not "!ImageCount!"=="4" set "Exception=ESD_Damaged" && goto :Exception
 exit /b
 
 :GETESDINFO <ESD>
@@ -714,32 +714,32 @@ exit /b
 
 :Exception <Exception>
 Echo.
-Echo ESD-Decrypter has stopped working with an Exception.
+Echo :^( ESD-Decrypter has stopped working with an Exception.
 Echo.
-if %~1==MODE (
+if %Exception%==MODE (
 	Echo The specified Operation Mode is invalid.
 	Echo Please correct this error with the help of the help documentation by running :
 	Echo.
 	Echo %~nx0 /help
 )
-if %~1==ESD_Not_Found (
+if %Exception%==ESD_Not_Found (
 	Echo The specified ESD File has not been found on your system.
 	Echo Please correct this error.
 )
-if %~1==Output_Not_Valid (
+if %Exception%==Output_Not_Valid (
 	Echo The specified Output Directory is invalid.
 	Echo Please correct your path to be a valid Windows Batch Path.
 )
-if %~1==ESD_Decrypt (
+if %Exception%==ESD_Decrypt (
 	Echo The following Errors were reported during ESD decryption :
 	Echo.
 	type "%temp%\esddecrypt.log"
 )
-if %~1==ESD_Damaged Echo The specified ESD File is damaged or not a Valid ESD File.
-if %~1==WIMLIB_Notfound Echo %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
-if %~1==Apply Echo Critical Errors were found after apply.
-if %~1==Export Echo Critical Errors were found after export.
-if %~1==ISO Echo Critical Errors were found during ISO creation.
+if %Exception%==ESD_Damaged Echo The specified ESD File is damaged or not a Valid ESD File.
+if %Exception%==WIMLIB_Notfound Echo %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
+if %Exception%==Apply Echo Critical Errors were found after apply.
+if %Exception%==Export Echo Critical Errors were found after export.
+if %Exception%==ISO Echo Critical Errors were found during ISO creation.
 Echo.
 goto exit
 
