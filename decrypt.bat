@@ -59,7 +59,6 @@ cscript /nologo /B /E:VBS HexChar.vbs < "cursorpos.hex" > "cursorpos.exe"
 del cursorpos.hex
 del hexchar.vbs
 
-
 :Main
 if "%~1"=="/help" goto help
 :: UPDATE SYSTEM
@@ -269,7 +268,6 @@ set "Scheme=%~6"
 set "Key=%~7"
 if [%Output:~-1%]==[\] set "OUT=%Output:~0,-1%"
 
-
 set counter=0
 echo>%temp%\getfiles.vbs Set objFS=CreateObject("Scripting.FileSystemObject")
 echo>>%temp%\getfiles.vbs Set objArgs = WScript.Arguments
@@ -284,14 +282,12 @@ for /f "delims=*" %%f in ('cscript //nologo %temp%\getfiles.vbs "%ESD%"') do (
 )
 del>nul %temp%\getfiles.vbs
 
-
 if not "!MODE!"=="WIM" if not "!MODE!"=="ESD" call :Exception MODE
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	if not exist "!ESD!" call :Exception ESD_Not_Found
 )
 if not exist "!Output!" mkdir "!Output!"
 if not exist "!Output!"  call :Exception Output_Not_Valid
-
 
 set "wimlib=%~dps0bin\wimlib-imagex.exe"
 if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
@@ -300,6 +296,10 @@ if not exist "!wimlib!" (
 )
 
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
+	Echo [Info] ESD Being processed currently :
+	Echo.
+	Echo %%~nxf
+	Echo.
 	Echo [Info] Checking the current state of the provided ESD File...
 	"!wimlib!" info "%%f" 4 1>nul 2>nul
 	IF !ERRORLEVEL! EQU 74 call :DecryptManager "%%f" "!Backup!" "!Key!"
@@ -314,7 +314,6 @@ Echo [Info] Filename: !DVDISO!
 Echo [Info] Label: !DVDLABEL!
 Echo.
 echo [Info] Creating Setup Media Layout...
-
 
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
@@ -393,7 +392,6 @@ if "!DeleteESD!"=="YES" (
 )
 call :progress 100
 exit /b
-
 
 :DecryptManager <ESD> <Backup(YES|NO)> {key}
 set "ESD_=%~1"
@@ -738,28 +736,17 @@ if %~1==ESD_Decrypt (
 	Echo.
 	type "%temp%\esddecrypt.log"
 )
-if %~1==ESD_Damaged (
-	Echo The specified ESD File is damaged or not a Valid ESD File.
-)
-if %~1==WIMLIB_Notfound (
-	Echo %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
-)
-if %~1==Apply (
-	Echo Critical Errors were found after apply.
-)
-if %~1==Export (
-	Echo Critical Errors were found after export.
-)
-if %~1==ISO (
-	Echo Critical Errors were found during ISO creation.
-)
+if %~1==ESD_Damaged Echo The specified ESD File is damaged or not a Valid ESD File.
+if %~1==WIMLIB_Notfound Echo %PROCESSOR_ARCHITECTURE% wimlib-imagex.exe not found
+if %~1==Apply Echo Critical Errors were found after apply.
+if %~1==Export Echo Critical Errors were found after export.
+if %~1==ISO Echo Critical Errors were found during ISO creation.
 Echo.
 goto exit
 
 :exit
 :: Clean up tasks here
 exit /b
-
 
 :GetCoords Cols= Lines=
 set /A "%1=%ERRORLEVEL%&0xFFFF, %2=(%ERRORLEVEL%>>16)&0xFFFF"
@@ -800,7 +787,6 @@ echo %ProgressPercent%%%
 cursorpos !Cols! !Lines!
 ENDLOCAL
 exit /b
-
 
 :: UPDATE SYSTEM
 :updatesystem
