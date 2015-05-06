@@ -307,7 +307,7 @@ for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	call :IsValid "%%f"
 )
 Echo [Info] Getting Informations from the provided ESD File...
-call :GETESDINFO !ESD! !Scheme!
+call :GETESDINFO "!ESD!" !Scheme!
 Echo [Info] The ISO will be saved with the following specifications :
 Echo.
 Echo [Info] Filename: !DVDISO!
@@ -362,7 +362,6 @@ for /l %%n in (1 1 %counter%) do (
 	)
 )
 call :progress 80
-Echo.
 echo [Info] Creating ISO file...
 reg copy "HKCU\Control Panel\International" "HKCU\Control Panel\International-Temp" /f >nul
 reg add "HKCU\Control Panel\International" /v sShortDate /d "yyyy-MM-dd" /f >nul
