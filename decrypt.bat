@@ -91,12 +91,8 @@ IF NOT "%1"=="" (
 		set "SCHEME=%~2"
 		shift
 	)
-	if "%1"=="/NoBackup" (
-		set BACKUP=NO
-	)
-	if "%1"=="/DeleteESD" (
-		set DeleteESD=YES
-	)
+	if "%1"=="/NoBackup" set BACKUP=NO
+	if "%1"=="/DeleteESD" set DeleteESD=YES
 	shift
 	goto :PARSE
 )
@@ -235,16 +231,14 @@ del>nul %temp%\getfiles.vbs
 
 if not "!MODE!"=="WIM" if not "!MODE!"=="ESD" set "Exception=MODE" && goto :Exception
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
-	if not exist "!ESD!" set "Exception=ESD_Not_Found" && goto :Exception
+	if not exist "%%f" set "Exception=ESD_Not_Found" && goto :Exception
 )
 if not exist "!Output!" mkdir "!Output!"
 if not exist "!Output!" set "Exception=Output_Not_Valid" && goto :Exception
 
 set "wimlib=%~dps0bin\wimlib-imagex.exe"
 if %PROCESSOR_ARCHITECTURE%==AMD64 set "wimlib=%~dps0bin\bin64\wimlib-imagex.exe"
-if not exist "!wimlib!" (
-	set "Exception=WIMLIB_Notfound" && goto :Exception
-)
+if not exist "!wimlib!" set "Exception=WIMLIB_Notfound" && goto :Exception
 
 for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 	Echo [Info] ESD Being processed currently :
@@ -259,6 +253,23 @@ for /f "tokens=2 delims==" %%f in ('set ESD[') do (
 )
 Echo [Info] Getting Informations from the provided ESD File...
 call :GETESDINFO "!ESD!" !Scheme!
+for /l %%n in (1 1 %counter2%) do (
+	Echo [Info] Detailed ESD Information for :
+	echo.
+	for /f "delims=" %%f in ('echo !ESD2[%%n]!') do echo %%~xnf
+	if /i !Architecture[%%n]!==x86 set arch=x86&archl=X86
+	if /i !Architecture[%%n]!==x86_64 set arch=x64&set archl=X64
+	Echo.
+	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
+	echo [Info] Build : !Build[%%n]!.!ServicePackBuild[%%n]!.!CompileDate[%%n]!
+	echo [Info] Build Branch : !BuildBranch[%%n]!
+	echo [Info] Build Type : !BuildType[%%n]!
+	echo [Info] Architecture : !arch!
+	echo [Info] Edition : !EditionID[%%n]!
+	echo [Info] Language : !DefaultLanguage[%%n]!
+	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
+	echo.
+)
 Echo [Info] The ISO will be saved with the following specifications :
 Echo.
 Echo [Info] Filename: !DVDISO!
@@ -280,15 +291,14 @@ Echo.
 IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 Echo.
 call :progress 50
-echo.
 "!wimlib!" export "!ESD[1]!" 3 ISOFOLDER\sources\boot.wim --boot
 IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 echo.
 call :progress 60
 if "!MODE!"=="WIM" (
 	echo [Info] Creating install.wim file...
+	Echo.
 	for /f "tokens=2 delims==" %%f in ('set ESD[') do (
-		Echo.
 		"!wimlib!" export "%%f" 4 ISOFOLDER\sources\install.wim --compress=maximum
 		IF NOT ERRORLEVEL 0 set "Exception=Export" && goto :Exception
 		Echo.
@@ -405,24 +415,6 @@ for /l %%n in (1 1 %counter2%) do (
 		set param=!value: =!
 		set "!param![%%n]=!var!"
 	)
-)
-
-for /l %%n in (1 1 %counter2%) do (
-	Echo [Info] Detailed ESD Information for :
-	echo.
-	for /f "delims=" %%f in ('echo !ESD2[%%n]!') do echo %%~xnf
-	if /i !Architecture[%%n]!==x86 set arch=x86&archl=X86
-	if /i !Architecture[%%n]!==x86_64 set arch=x64&set archl=X64
-	Echo.
-	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
-	echo [Info] Build : !Build[%%n]!.!ServicePackBuild[%%n]!.!CompileDate[%%n]!
-	echo [Info] Build Branch : !BuildBranch[%%n]!
-	echo [Info] Build Type : !BuildType[%%n]!
-	echo [Info] Architecture : !arch!
-	echo [Info] Edition : !EditionID[%%n]!
-	echo [Info] Language : !DefaultLanguage[%%n]!
-	echo [Info] 様様様様様様様様様様様様様様様様様様様様様様様
-	echo.
 )
 
 set LanguageID=!DefaultLanguage[1]!
