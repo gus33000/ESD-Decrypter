@@ -127,7 +127,8 @@ echo [Info] Extracting "Windows Setup Media"...
 bin\7z>nul x -y -o.\ISOExtract "%~1" -xr@bin\exclude.txt
 for /f "tokens=2 delims==" %%a in ('find "BuildBranch=" ".\ISOExtract\sources\idwbinfo.txt"') do @set BuildBranch=%%a
 for /f "tokens=2 delims==" %%a in ('find "BuildType=" ".\ISOExtract\sources\idwbinfo.txt"') do @set BuildType=%%a
-for /f "tokens=6 delims=:.()" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('.\ISOExtract\setup.exe').FileVersion"') do set CompileDate=%%a
+for /f "tokens=5 delims=:." %%n in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('.\ISOExtract\setup.exe').FileVersion"') do set CompileDate=%%n
+set CompileDate=!CompileDate:~0,-1!
 for /f "tokens=4 delims=: " %%i in ('%wimlib% info ".\WIMExtract\sources\install.wim" --header ^| find /i "Image Count"') do set count=%%i
 for /l %%n in (1 1 %count%) do (
 	for /f "skip=2 delims=" %%f in ('%wimlib% info ".\WIMExtract\sources\install.wim" %%n') do (
@@ -137,6 +138,7 @@ for /l %%n in (1 1 %count%) do (
 		)
 		set param=!value: =!
 		set "!param![%%n]=!var!"
+		if "!param!"=="EditionID" set Edition=Y
 	)
 	set "choice=!choice!%%n"
 )
@@ -165,20 +167,28 @@ if not "%count%"=="1" (
 	echo.
 )
 if "%count%"=="1" set CHOICE=1
-if /i !EditionID[%CHOICE%]!==Core set Edition=CORE
-if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
-if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Edition=CHINA
-if /i !EditionID[%CHOICE%]!==Professional set Edition=PRO
-if /i !EditionID[%CHOICE%]!==Enterprise set Edition=ENTERPRISE
-if /i !EditionID[%CHOICE%]!==Core set Licensing=RET
-if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Licensing=RET
-if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Licensing=RET
-if /i !EditionID[%CHOICE%]!==Professional set Licensing=RET
-if /i !EditionID[%CHOICE%]!==Enterprise set Licensing=VOL
+if "%Edition%"=="Y" (
+	if /i !EditionID[%CHOICE%]!==Core set Edition=CORE
+	if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
+	if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Edition=CHINA
+	if /i !EditionID[%CHOICE%]!==Professional set Edition=PRO
+	if /i !EditionID[%CHOICE%]!==Enterprise set Edition=ENTERPRISE
+	if /i !EditionID[%CHOICE%]!==Core set Licensing=RET
+	if /i !EditionID[%CHOICE%]!==CoreSingleLanguage set Licensing=RET
+	if /i !EditionID[%CHOICE%]!==CoreCountrySpecific set Licensing=RET
+	if /i !EditionID[%CHOICE%]!==Professional set Licensing=RET
+	if /i !EditionID[%CHOICE%]!==Enterprise set Licensing=VOL
+)
 if /i !Architecture[%CHOICE%]!==x86_64 set arch=x64
 if /i !Architecture[%CHOICE%]!==x86 set arch=x86
-set FILENAME=!Build[%CHOICE%]!.!ServicePackBuild[%CHOICE%]!.!CompileDate!.!BuildBranch!_CLIENT!Edition!_!Licensing!_!arch!!BuildType!_!DefaultLanguage[%CHOICE%]!.esd
+if not "%Edition%"=="Y" set FILENAME=!Build[%CHOICE%]!.!ServicePackBuild[%CHOICE%]!.!CompileDate!.!BuildBranch!_!arch!!BuildType!_!DefaultLanguage[%CHOICE%]!.esd
+if "%Edition%"=="Y" set FILENAME=!Build[%CHOICE%]!.!ServicePackBuild[%CHOICE%]!.!CompileDate!.!BuildBranch!_CLIENT!Edition!_!Licensing!_!arch!!BuildType!_!DefaultLanguage[%CHOICE%]!.esd
 call :LCase FILENAME DVDESD
+echo.
+echo [Info] ESD Informations :
+echo.
+echo [Info] Filename : !DVDESD!
+echo.
 echo [Info] Capturing "Windows Setup Media"...
 echo.
 %wimlib% capture .\ISOExtract !DVDESD! "Windows Setup Media" "Windows Setup Media" --compress=LZMS --solid
@@ -276,7 +286,6 @@ Echo [Info] Filename: !DVDISO!
 Echo [Info] Label: !DVDLABEL!
 Echo.
 echo [Info] Creating Setup Media Layout...
-
 IF EXIST ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 echo.
@@ -284,6 +293,11 @@ echo.
 IF NOT ERRORLEVEL 0 set "Exception=Apply" && goto :Exception
 Echo.
 del ISOFOLDER\MediaMeta.xml 1>nul 2>nul
+if not "!counter!"=="1" (
+	del>nul ISOFOLDER\sources\pid.txt
+	echo>ISOFOLDER\sources\ei.cfg [channel]
+	echo>>ISOFOLDER\sources\ei.cfg _default
+)
 call :progress 40
 echo [Info] Creating boot.wim file...
 Echo.
@@ -405,7 +419,8 @@ for /l %%n in (1 1 %counter2%) do (
 	for /f "tokens=2 delims==" %%a in ('find "BuildType=" "idwbinfo.txt"') do @set BuildType[%%n]=%%a
 	del>nul idwbinfo.txt
 	"!wimlib!">nul extract "!ESD2[%%n]!" 1 setup.exe
-	for /f "tokens=6 delims=:.()" %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate[%%n]=%%a
+	for /f "tokens=5 delims=:." %%a in ('powershell -Command "[System.Diagnostics.FileVersionInfo]::GetVersionInfo('setup.exe').FileVersion"') do set CompileDate[%%n]=%%a
+	set CompileDate[%%n]=!CompileDate[%%n]:~0,-1!
 	del>nul setup.exe
 	for /f "skip=2 delims=" %%f in ('!wimlib! info "!ESD2[%%n]!" 4') do (
 		for /f "tokens=1 delims=:" %%a in ('echo %%f') do set value=%%a
@@ -585,6 +600,7 @@ for /l %%n in (1 1 %counter2%) do (
 		if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=RET
 		if /i !EditionID[%%n]!==Professional set Licensing=RET
 		if /i !EditionID[%%n]!==Enterprise set Licensing=VOL
+		set Language=!DefaultLanguage[%%n]!
 	) else (
 		if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE
 		if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE
@@ -596,11 +612,12 @@ for /l %%n in (1 1 %counter2%) do (
 		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=!Licensing!-RET
 		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==Professional set Licensing=!Licensing!-RET
 		echo !Licensing! | findstr>nul /C:"VOL" || if /i !EditionID[%%n]!==Enterprise set Licensing=!Licensing!-VOL
+		echo !Language! | findstr>nul /C:"!DefaultLanguage[%%n]!" || set Language=!Language!_!DefaultLanguage[%%n]!
 	)
 )
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
-set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_CLIENT!Edition!_!Licensing!_%arch%%BuildType[1]%_%DefaultLanguage[1]%.iso
+set FILENAME=%Build[1]%.%ServicePackBuild[1]%.%CompileDate[1]%.%BuildBranch[1]%_CLIENT!Edition!_!Licensing!_%arch%%BuildType[1]%_!Language!.iso
 call :UCase FILENAME DVDISO
 exit /b
 
