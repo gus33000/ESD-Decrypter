@@ -573,43 +573,30 @@ if %Build[1]% GEQ 10100 (
 exit /b
 
 :GENISONAME2
-if not "%counter2%"=="1" (
-	for /l %%n in (1 1 %counter2%) do (
-		if "!Edition!"=="" (
-			if /i !EditionID[%%n]!==Core set Edition=CORE
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=CHINA
-			if /i !EditionID[%%n]!==Professional set Edition=PRO
-			if /i !EditionID[%%n]!==Enterprise set Edition=ENTERPRISE
-			if /i !EditionID[%%n]!==Core set Licensing=RET
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=RET
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=RET
-			if /i !EditionID[%%n]!==Professional set Licensing=RET
-			if /i !EditionID[%%n]!==Enterprise set Licensing=VOL
-		) else (
-			if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=!Edition!-CHINA
-			if /i !EditionID[%%n]!==Professional set Edition=!Edition!-PRO
-			if /i !EditionID[%%n]!==Enterprise set Edition=!Edition!-ENTERPRISE
-			if /i !EditionID[%%n]!==Core set Licensing=!Licensing!-RET
-			if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=!Licensing!-RET
-			if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=!Licensing!-RET
-			if /i !EditionID[%%n]!==Professional set Licensing=!Licensing!-RET
-			if /i !EditionID[%%n]!==Enterprise set Licensing=!Licensing!-VOL
-		)
+for /l %%n in (1 1 %counter2%) do (
+	if "!Edition!"=="" (
+		if /i !EditionID[%%n]!==Core set Edition=CORE
+		if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=SINGLELANGUAGE
+		if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=CHINA
+		if /i !EditionID[%%n]!==Professional set Edition=PRO
+		if /i !EditionID[%%n]!==Enterprise set Edition=ENTERPRISE
+		if /i !EditionID[%%n]!==Core set Licensing=RET
+		if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=RET
+		if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=RET
+		if /i !EditionID[%%n]!==Professional set Licensing=RET
+		if /i !EditionID[%%n]!==Enterprise set Licensing=VOL
+	) else (
+		if /i !EditionID[%%n]!==Core set Edition=!Edition!-CORE
+		if /i !EditionID[%%n]!==CoreSingleLanguage set Edition=!Edition!-SINGLELANGUAGE
+		if /i !EditionID[%%n]!==CoreCountrySpecific set Edition=!Edition!-CHINA
+		if /i !EditionID[%%n]!==Professional set Edition=!Edition!-PRO
+		if /i !EditionID[%%n]!==Enterprise set Edition=!Edition!-ENTERPRISE
+		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==Core set Licensing=!Licensing!-RET
+		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==CoreSingleLanguage set Licensing=!Licensing!-RET
+		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==CoreCountrySpecific set Licensing=!Licensing!-RET
+		echo !Licensing! | findstr>nul /C:"RET" || if /i !EditionID[%%n]!==Professional set Licensing=!Licensing!-RET
+		echo !Licensing! | findstr>nul /C:"VOL" || if /i !EditionID[%%n]!==Enterprise set Licensing=!Licensing!-VOL
 	)
-) else (
-	if /i %EditionID[1]%==Core set Edition=CORE
-	if /i %EditionID[1]%==CoreSingleLanguage set Edition=SINGLELANGUAGE
-	if /i %EditionID[1]%==CoreCountrySpecific set Edition=CHINA
-	if /i %EditionID[1]%==Professional set Edition=PRO
-	if /i %EditionID[1]%==Enterprise set Edition=ENTERPRISE
-	if /i !EditionID[1]!==Core set Licensing=RET
-	if /i !EditionID[1]!==CoreSingleLanguage set Licensing=RET
-	if /i !EditionID[1]!==CoreCountrySpecific set Licensing=RET
-	if /i !EditionID[1]!==Professional set Licensing=RET
-	if /i !EditionID[1]!==Enterprise set Licensing=VOL
 )
 if /i %Architecture[1]%==x86_64 set arch=x64
 if /i %Architecture[1]%==x86 set arch=x86
