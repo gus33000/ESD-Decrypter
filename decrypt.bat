@@ -208,14 +208,12 @@ rmdir /Q /S .\WIMExtract
 exit /b
 
 :ESD2ISO <MODE(WIM|ESD)> <ESD> <Output> <Backup(YES|NO)> <DeleteESD(YES|NO)> <Scheme> {key}
-
 echo.
 cursorpos
 call :GetCoords OCols OLines
 call :Progress 0
 echo.
 echo.
-
 set "MODE=%~1"
 set "ESD=%~2"
 set "Output=%~3"
@@ -224,7 +222,6 @@ set "DeleteESD=%~5"
 set "Scheme=%~6"
 set "Key=%~7"
 if [%Output:~-1%]==[\] set "OUT=%Output:~0,-1%"
-
 set counter=0
 echo>%temp%\getfiles.vbs Set objFS=CreateObject("Scripting.FileSystemObject")
 echo>>%temp%\getfiles.vbs Set objArgs = WScript.Arguments
@@ -567,12 +564,14 @@ if %Build[1]% GEQ 9896 (
 )
 
 if %Build[1]% GTR 10066 (
-	set DVDISO=Windows10_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
-	if /i %EditionID[1]%==Core set DVDISO=Windows10_Core_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
-	if /i %EditionID[1]%==CoreSingleLanguage set DVDISO=Windows10_SingleLanguage_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
-	if /i %EditionID[1]%==CoreCountrySpecific set DVDISO=Windows10_China_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
-	if /i %EditionID[1]%==Professional set DVDISO=Windows10_Pro_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
-	if /i %EditionID[1]%==Enterprise set DVDISO=Windows10_Enterprise_InsiderPreview_%arch%_%lang%_%Build[1]%.iso
+	if /i %arch%==x64 set arch2=x64
+	if /i %arch%==x86 set arch2=x32
+	set DVDISO=Windows10_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
+	if /i %EditionID[1]%==Core set DVDISO=Windows10_Core_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
+	if /i %EditionID[1]%==CoreSingleLanguage set DVDISO=Windows10_SingleLanguage_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
+	if /i %EditionID[1]%==CoreCountrySpecific set DVDISO=Windows10_China_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
+	if /i %EditionID[1]%==Professional set DVDISO=Windows10_Pro_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
+	if /i %EditionID[1]%==Enterprise set DVDISO=Windows10_Enterprise_InsiderPreview_%arch2%_%lang%_%Build[1]%.iso
 )
 
 if %Build[1]% GEQ 10100 (
