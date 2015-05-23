@@ -4,6 +4,8 @@ set "params=%*"
 if not "!params!"=="" set "params=%params:"=""%"
 pushd "%cd%" && cd /d "%~dp0" && ( if exist "%temp%\getadmin.vbs" del "%temp%\getadmin.vbs" ) && fsutil dirty query %systemdrive% >nul || if ERRORLEVEL==0 (  echo Set UAC = CreateObject^("Shell.Application"^) : UAC.ShellExecute "cmd.exe", "/k cd ""%~sdp0"" && ""%~s0"" %params%", "", "runas", 1 >> "%temp%\getadmin.vbs" && "%temp%\getadmin.vbs" && exit /B )
 
+Title ESD Decrypter / Converter to ISO
+
 echo.
 echo ESD Decrypter / Converter to ISO - Based on the script by abbodi1406
 echo Made with love by gus33000 - Copyright 2015 (c) gus33000 - Version 1.0
@@ -338,13 +340,13 @@ echo [Info] Creating ISO file...
 reg copy "HKCU\Control Panel\International" "HKCU\Control Panel\International-Temp" /f >nul
 reg add "HKCU\Control Panel\International" /v sShortDate /d "yyyy-MM-dd" /f >nul
 reg add "HKCU\Control Panel\International" /v sTimeFormat /d "HH:mm:ss" /f >nul
-for %%a in (ISOFOLDER\sources\setup.exe) do set date=%%~ta
-set dd=%date:~8,2%
-set mm=%date:~5,2%
-set yyyy=%date:~0,4%
-set time=%date:~11,5%
+for %%a in (ISOFOLDER\sources\setup.exe) do set "date=%%~ta"
+set dd=!date:~8,2!
+set mm=!date:~5,2!
+set yyyy=!date:~0,4!
+set time=!date:~11,5!
 reg copy "HKCU\Control Panel\International-Temp" "HKCU\Control Panel\International" /f >nul
-bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t%mm%/%dd%/%yyyy%,%time%:00 -l%DVDLABEL% ISOFOLDER %Output%\%DVDISO%
+bin\cdimage.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -h -m -u2 -udfver102 -t!mm!/!dd!/!yyyy!,!time!:00 -l%DVDLABEL% ISOFOLDER %Output%\%DVDISO%
 IF NOT ERRORLEVEL 0 set "Exception=ISO" && goto :Exception
 call :progress 90
 rmdir /s /q ISOFOLDER\
@@ -716,6 +718,7 @@ for /f "delims=" %%A in ('findstr /n "^" "%~f0"') do (
 goto :EOF
 
 :progress
+Title ESD Decrypter / Converter to ISO
 SETLOCAL ENABLEDELAYEDEXPANSION
 cursorpos
 call :GetCoords Cols Lines
@@ -827,33 +830,28 @@ C2EBE9F6C301740BF6C302740366F7D86603C14EC3CCCCCCCCCCCCCCCCCCCCCCCCCCE847[3]8BF08
 646C6C[268]
 :endCursorpos
 
-call :heredoc hexchar >hexchar.vbs && goto endHexchar
-Rem Hex digits to Ascii Characters conversion
-Rem Antonio Perez Ayala - Apr/14/2012
-
-Dim line,index,count
-line = WScript.StdIn.ReadLine()
-While line <> ""
-   index = 1
-   While index < len(line)
-      If Mid(line,index,1) = "[" Then
-         index = index+1
-         count = 0
-         While Mid(line,index+count,1) <> "]"
-            count = count+1
-         WEnd
-         For i=1 To Int(Mid(line,index,count))
-            WScript.StdOut.Write Chr(0)
-         Next
-         index = index+count+1
-      Else
-         WScript.StdOut.Write Chr(CByte("&H"&Mid(line,index,2)))
-         index = index+2
-      End If
-   WEnd
-   line = WScript.StdIn.ReadLine()
-WEnd
-:endHexchar
+echo>hexchar.vbs Dim line,index,count
+echo>>hexchar.vbs line = WScript.StdIn.ReadLine^(^)
+echo>>hexchar.vbs While line ^<^> ""
+echo>>hexchar.vbs    index = 1
+echo>>hexchar.vbs    While index ^< len^(line^)
+echo>>hexchar.vbs       If Mid^(line,index,1^) = "[" Then
+echo>>hexchar.vbs          index = index+1
+echo>>hexchar.vbs          count = 0
+echo>>hexchar.vbs          While Mid^(line,index+count,1^) ^<^> "]"
+echo>>hexchar.vbs             count = count+1
+echo>>hexchar.vbs          WEnd
+echo>>hexchar.vbs          For i=1 To Int^(Mid^(line,index,count^)^)
+echo>>hexchar.vbs             WScript.StdOut.Write Chr^(0^)
+echo>>hexchar.vbs          Next
+echo>>hexchar.vbs          index = index+count+1
+echo>>hexchar.vbs       Else
+echo>>hexchar.vbs          WScript.StdOut.Write Chr^(CByte^("&H"^&Mid^(line,index,2^)^)^)
+echo>>hexchar.vbs          index = index+2
+echo>>hexchar.vbs       End If
+echo>>hexchar.vbs    WEnd
+echo>>hexchar.vbs    line = WScript.StdIn.ReadLine^(^)
+echo>>hexchar.vbs WEnd
 
 cscript /nologo /B /E:VBS HexChar.vbs < "cursorpos.hex" > "cursorpos.exe"
 del cursorpos.hex
