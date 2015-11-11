@@ -5,13 +5,20 @@
 # Test-Wow64
 # Test-Win64
 # Test-Win32
-# Test-is64Bit
+# Test-Arch
 # Menu-Select
 # DownloadFile
 # Output
 # Copy-File
 # -------------
 # Setups WIMLib
+
+Write-Host "
+Gus's Common Utilities / Function Library
+Version 1.9
+"
+
+Write-Host 'Loading Utilities version 1.9...'
 
 function New-Enum ([string] $name) {
     $appdomain = [System.Threading.Thread]::GetDomain()
@@ -167,7 +174,7 @@ function Test-Win32() {
 	return [IntPtr]::size -eq 4
 }
 
-function Test-is64Bit($FilePath) {
+function Test-Arch($FilePath) {
 	[int32]$MACHINE_OFFSET = 4
 	[int32]$PE_POINTER_OFFSET = 60
 
@@ -178,18 +185,35 @@ function Test-is64Bit($FilePath) {
 	[int32]$PE_HEADER_ADDR = [System.BitConverter]::ToInt32($data, $PE_POINTER_OFFSET)
 	[int32]$machineUint = [System.BitConverter]::ToUInt16($data, $PE_HEADER_ADDR + $MACHINE_OFFSET)
 
-	$result = "" | select FilePath, FileType, Is64Bit
+	$result = "" | select FilePath, FileType
 	$result.FilePath = $FilePath
-	$result.Is64Bit = $false
 	
 	$stream.Close()
 
 	switch ($machineUint) 
 	{
-		0      { $result.FileType = 'native' }
-		0x014c { $result.FileType = 'x86' }
-		0x0200 { $result.FileType = 'ia64' }
-		0x8664 { $result.FileType = 'amd64'; $result.is64Bit = $true; }
+		0      { $result.FileType = 'NATIVE' }
+		0x1d3  { $result.FileType = 'AM33' }
+		0x8664 { $result.FileType = 'AMD64' }
+		0x1c0  { $result.FileType = 'ARM' }
+		0xaa64 { $result.FileType = 'ARM64' }
+		0x1c4  { $result.FileType = 'ARMNT' }
+		0xebc  { $result.FileType = 'EBC' }
+		0x14c  { $result.FileType = 'X86' }
+		0x200  { $result.FileType = 'IA64' }
+		0x9041 { $result.FileType = 'M32R' }
+		0x266  { $result.FileType = 'MIPS16' }
+		0x366  { $result.FileType = 'MIPSFPU' }
+		0x466  { $result.FileType = 'MIPSFPU16' }
+		0x1f0  { $result.FileType = 'POWERPC' }
+		0x1f1  { $result.FileType = 'POWERPCFP' }
+		0x166  { $result.FileType = 'R4000' }
+		0x1a2  { $result.FileType = 'SH3' }
+		0x1a3  { $result.FileType = 'SH3DSP' }
+		0x1a6  { $result.FileType = 'SH4' }
+		0x1a8  { $result.FileType = 'SH5' }
+		0x1c2  { $result.FileType = 'THUMB' }
+		0x169  { $result.FileType = 'WCEMIPSV2' }
 	}
 
 	$result
@@ -201,7 +225,7 @@ function Menu-Select($displayoptions, $arrayofoptions) {
 		foreach ($item in $displayoptions) {
 			$counter++
 			$padding = ' ' * ((([string]$displayoptions.Length).Length) - (([string]$counter).Length))
-			Write-host ('['+$counter+']'+$padding) $item
+			Write-host -ForeGroundColor White ('['+$counter+']'+$padding+' '+$item) 
 		}
 		Write-Host ''
 		$choice = read-host -prompt "Select number and press enter"
@@ -301,3 +325,5 @@ if (Test-Wow64) {
 } else {
 	return
 }
+
+Write-Host 'Utilities have been loaded'
