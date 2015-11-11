@@ -235,6 +235,7 @@ function Menu-Select($displayoptions, $arrayofoptions) {
 }
 
 function DownloadFile($url, $targetFile) {
+   Write-Host $url $targetFile
    $uri = New-Object "System.Uri" "$url"
    $request = [System.Net.HttpWebRequest]::Create($uri)
    $request.set_Timeout(15000) #15 second timeout

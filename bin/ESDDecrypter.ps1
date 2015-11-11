@@ -252,7 +252,11 @@ Please select your installation media
 		$choice = $choice - 1
 		$FinalItem = $lists[$choice]
 	} else {
-		$FinalItem = $lists
+		if ($lists -is [system.array]) {
+			$FinalItem = $lists[0]
+		} else {
+			$FinalItem = $lists
+		}
 	}
 	cls
 	$source = $FinalItem.FilePath
@@ -1217,7 +1221,7 @@ Please Select which ESD you want to Convert
 }
 
 function Download-Decrypt {
-	$versions = @('https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/products_1.xml', 'https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/products_472.xml', 'https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/MediaCreationTool/prod/Products.xml')
+	$versions = @('https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/products_1.xml', 'https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/products_472.xml', 'https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/MediaCreationTool/prod/Products.xml', "https://wscont.apps.microsoft.com/winstore/OSUpgradeNotification/MediaCreationTool/prod/Products11092015.xml")
 
 	$DisplayItems = @()
 	foreach ($item in $versions) {
