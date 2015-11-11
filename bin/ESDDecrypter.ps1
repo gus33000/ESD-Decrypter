@@ -173,9 +173,14 @@ Please select your installation media
 }
 
 function DownloadFrom-XML ($url) {
-	$wc = New-Object System.Net.WebClient
-	$wc.Encoding = [System.Text.Encoding]::utf8
-	[xml]$doc = $wc.DownloadString($url)
+	if ($url -contains '.\bin\') {
+		[xml]$doc = Get-content $url
+	} else {
+		$wc = New-Object System.Net.WebClient
+		$wc.Encoding = [System.Text.Encoding]::utf8
+		[xml]$doc = $wc.DownloadString($url)
+	}
+	
 	$commonlangs = @()
 	$langs = @()
 	foreach ($lang in $doc.PublishedMedia.Languages.Language.LanguageCode) {
@@ -1235,6 +1240,14 @@ function Download-Decrypt {
 		$compiledate = $FileName.split('.')[3].split('_')[0]
 		$DisplayItems += ($doc.PublishedMedia.release+' ('+$build+'.'+$subver+'.'+$lab+'.'+$compiledate+')')
 	}
+	$versions += '.\bin\Products_10240.xml'
+	[xml]$doc = get-content .\bin\Products_10240.xml
+	$FileName = ($doc.PublishedMedia.Files.File.FileName | % { $_ })[0]
+	$build = $FileName.split('.')[0]
+	$subver = $FileName.split('.')[1]
+	$lab = $FileName.split('.')[2]
+	$compiledate = $FileName.split('.')[3].split('_')[0]
+	$DisplayItems += ($doc.PublishedMedia.release+' ('+$build+'.'+$subver+'.'+$lab+'.'+$compiledate+')')
 	$versions += '9600.17050.winblue_refresh.140317-1640'
 	$DisplayItems += 'Windows Blue March 2014 Update GA 2 (9600.17050.winblue_refresh.140317-1640)'
 	$versions += 'http://ms-vnext.net/Win10esds/urls/'
