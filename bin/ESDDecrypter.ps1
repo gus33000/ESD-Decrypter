@@ -19,14 +19,14 @@ param (
 	$extensiontype
 )
 
-$Host.UI.RawUI.WindowTitle = "ESD Toolkit - October Tech Preview 2015"
+$Host.UI.RawUI.WindowTitle = "ESD Toolkit - November Tech Preview 2015"
 
 start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log" | out-null
 
 Write-Host '
 Based on the script by abbodi1406
-ESD Toolkit - October Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 3.0
-For testing purposes only. Build 3.0.10117.0.fbl_release(gus33000).151011-0928
+ESD Toolkit - November Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 3.0
+For testing purposes only. Build 3.0.10120.0.th2_release_multi(gus33000).151111-1116
 '
 
 Write-Host 'Loading utilities module...'
