@@ -26,7 +26,7 @@ start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log"
 Write-Host '
 Based on the script by abbodi1406
 ESD Toolkit - November Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 3.0
-For testing purposes only. Build 3.0.10120.0.th2_release_multi(gus33000).151111-1134
+For testing purposes only. Build 3.0.10121.0.th2_release_multi(gus33000).151111-2055
 '
 
 Write-Host 'Loading utilities module...'
@@ -596,6 +596,7 @@ function Get-InfosFromESD(
 	remove-item lang.ini -force
 	
 	$tag = 'ir3'
+	$DVD = 'DV9'
 	
 	if ($WIMInfo[4].Architecture -eq 'x86') {
 		$arch = 'x86'
@@ -615,43 +616,37 @@ function Get-InfosFromESD(
 		$tag = 'ir6'
 	}
 	
-	$DVDLabel = ($tag+'_CCSA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()
-	if ($WIMInfo.header.ImageCount -eq 4) {
-		if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ($tag+'_CCRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreN') {$DVDLabel = ($tag+'_CCRNA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ($tag+'_CSLA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ($tag+'_CCHA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ($tag+'_CPRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalN') {$DVDLabel = ($tag+'_CPRNA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalWMC') {$DVDLabel = ($tag+'_CPWMCA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnected') {$DVDLabel = ($tag+'_CCONA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedN') {$DVDLabel = ($tag+'_CCONNA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedSingleLanguage') {$DVDLabel = ($tag+'_CCSLA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedCountrySpecific') {$DVDLabel = ($tag+'_CCCHA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudent') {$DVDLabel = ($tag+'_CPRSA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudentN') {$DVDLabel = ($tag+'_CPRSNA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV9').ToUpper()}
-	}
-	
 	if ([int] $WIMInfo[4].Build -gt '9600') {
-		$DVDLabel = ('JM1_CCSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()
-		if ($WIMInfo.header.ImageCount -eq 4) {
-			if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ('JM1_CCRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ('JM1_CSLA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ('JM1_CCHA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ('JM1_CPRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'Enterprise') {$DVDLabel = ('JM1_CENA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-		}
+		$tag = 'JM1'
+		$DVD = 'DV5'
+	}
+	if ([int] $WIMInfo[4].Build -ge '9896') {
+		$tag = 'J'
+		$DVD = 'DV5'
 	}
 	
-	if ([int] $WIMInfo[4].Build -ge '9896') {
-		$DVDLabel = ('J_CCSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()
-		if ($WIMInfo.header.ImageCount -eq 4) {
-			if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ('J_CCRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ('J_CSLA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ('J_CCHA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ('J_CPRA_'+$arch+'FRER_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-			if ($WIMInfo[4].EditionID -eq 'Enterprise') {$DVDLabel = ('J_CENA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_DV5').ToUpper()}
-		}
+	$DVDLabel = ($tag+'_CCSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()
+	if ($WIMInfo.header.ImageCount -eq 4) {
+		if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ($tag+'_CCRA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreConnected') {$DVDLabel = ($tag+'_CCONA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreConnectedCountrySpecific') {$DVDLabel = ($tag+'_CCCHA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreConnectedN') {$DVDLabel = ($tag+'_CCONNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreConnectedSingleLanguage') {$DVDLabel = ($tag+'_CCSLA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ($tag+'_CCHA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreN') {$DVDLabel = ($tag+'_CCRNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ($tag+'_CSLA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ($tag+'_CPRA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'ProfessionalN') {$DVDLabel = ($tag+'_CPRNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudent') {$DVDLabel = ($tag+'_CPRSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudentN') {$DVDLabel = ($tag+'_CPRSNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'ProfessionalWMC') {$DVDLabel = ($tag+'_CPWMCA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'Education') {$DVDLabel = ($tag+'_CEDA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'EducationN') {$DVDLabel = ($tag+'_CEDNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'Enterprise') {$DVDLabel = ($tag+'_CENA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'EnterpriseN') {$DVDLabel = ($tag+'_CENNA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'EnterpriseS') {$DVDLabel = ($tag+'_CES_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		if ($WIMInfo[4].EditionID -eq 'EnterpriseSN') {$DVDLabel = ($tag+'_CESN_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+
 	}
 	
 	$result.VolumeLabel = $DVDLabel
