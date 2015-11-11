@@ -26,7 +26,7 @@ start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log"
 Write-Host '
 Based on the script by abbodi1406
 ESD Toolkit - November Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 3.0
-For testing purposes only. Build 3.0.10120.0.th2_release_multi(gus33000).151111-1116
+For testing purposes only. Build 3.0.10120.0.th2_release_multi(gus33000).151111-1134
 '
 
 Write-Host 'Loading utilities module...'
@@ -587,6 +587,14 @@ function Get-InfosFromESD(
 	remove-item lang.ini -force
 	
 	$tag = 'ir3'
+	
+	if ($WIMInfo[4].Architecture -eq 'x86') {
+		$arch = 'x86'
+	}
+	
+	if ($WIMInfo[4].Architecture -eq 'x86_64') {
+		$arch = 'x64'
+	}
 	
 	if ($WIMInfo[4].ServicePackBuild -eq '17056') {
 		$tag = 'ir4'
