@@ -1,7 +1,5 @@
-# ESD-Decrypter
-ESD Decrypter Rewrite Script
-
-WIP - Don't use it until I mark a commit with the word STABLE
+# ESD-ToolKit
+ESD ToolKit Rewrite Script
 
 ### New features compared to the original
 -Added: Drag and drop functionality - you can now drag an esd file to the bat file.
