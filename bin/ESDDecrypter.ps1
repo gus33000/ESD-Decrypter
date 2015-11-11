@@ -497,8 +497,6 @@ function Get-InfosFromESD(
 	$WIMInfo["header"] = @{}
 	$WIMInfo["header"]["ImageCount"] = ($counter.toString())
 	
-	$WIMInfo
-	
 	$result.Editions = $editions
 		
 	# Converting standards architecture names to friendly ones, if we didn't found any, we put the standard one instead * cough * arm / ia64,
@@ -737,8 +735,6 @@ function Get-InfosFromESD(
 	}
 	$result.FileName = ($filename+'.iso').ToUpper()
 	
-	Write-Host $result
-	
 	return $result
 }
 
@@ -791,6 +787,9 @@ function Convert-ESD (
 	
 	Output ([out.level] 'Info') 'Gathering build information...'
 	$ISOInfos = (Get-InfosFromESD $ProcessESD)
+	
+	$ISOInfos
+	
 	Output ([out.level] 'Info') 'Creating Media Temporary Directory...'
 	New-Item -ItemType Directory '.\Media' | out-null
 	Output ([out.level] 'Info') 'Creating Setup Media Layout...'
