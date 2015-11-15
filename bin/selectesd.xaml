@@ -1,0 +1,44 @@
+<UserControl
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="SelectESD">
+	<Grid>
+		<Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                <GradientStop Color="#FF00A6DD"/>
+				<GradientStop Color="#FF00A6DD" Offset="1.5"/>
+                <GradientStop Color="#FF0081AC" Offset="0.100"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+		<StackPanel Orientation="Vertical">
+			<StackPanel Margin="0,0,0,5">
+				<Label Margin="0,30,0,0" Width="630" Foreground="White" FontFamily="Segoe UI Light" FontStretch="SemiCondensed" FontWeight="Thin" TextOptions.TextFormattingMode="Display">
+					<TextBlock TextWrapping="WrapWithOverflow" FontSize="32">
+						Select which ESD you want to Convert
+					</TextBlock>
+				</Label>
+				</StackPanel>
+				<StackPanel Margin="5,15,5,0">
+					<ListView Margin="35,15,35,0" Name="ESDList" Height="325" SelectionMode="Single">
+						<ListView.Resources>
+							<Style TargetType="{x:Type GridViewColumnHeader}">
+							<Setter Property="HorizontalContentAlignment" Value="Left" />
+						</Style>
+                    </ListView.Resources>
+					<ListView.View>
+							<GridView>
+								<GridViewColumn Header="ESD File" Width="500" DisplayMemberBinding="{Binding File}"/>
+								<GridViewColumn Header="Full Path" Width="100" DisplayMemberBinding="{Binding Path}"/>
+							</GridView>
+					</ListView.View>
+				</ListView>
+			</StackPanel>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button2" Content="Back" Height="25" Margin="449,20,110,0" IsDefault="False"/>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button" Content="Next" Height="25" Margin="554,20,5,0" IsDefault="True"/>
+		</StackPanel>
+	</Grid>
+</UserControl>

@@ -1,0 +1,40 @@
+<UserControl
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="FileFormat">
+	<Grid>
+		<Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                <GradientStop Color="#FF00A6DD"/>
+				<GradientStop Color="#FF00A6DD" Offset="1.5"/>
+                <GradientStop Color="#FF0081AC" Offset="0.100"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+		<StackPanel Orientation="Vertical">
+			<StackPanel Margin="0,0,0,5">
+				<Label Margin="0,30,0,0" Width="630" Foreground="White" FontFamily="Segoe UI Light" FontStretch="SemiCondensed" FontWeight="Thin" TextOptions.TextFormattingMode="Display">
+					<TextBlock TextWrapping="WrapWithOverflow" FontSize="32">
+						What type of filename do you want for your ISO file?
+					</TextBlock>
+				</Label>
+				<TextBlock Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="LightGray" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">
+					ESD ToolKit needs to know which type of filename your final iso will have (according to your preferences).
+				</TextBlock>
+			</StackPanel>
+			<StackPanel Margin="5,15,35,0">
+				<RadioButton Name="Consumer" Padding="6,-3,0,0" GroupName="Group3" HorizontalAlignment="Left" Margin="35,15,0,0" VerticalAlignment="Top" FontSize="15" RenderTransformOrigin="0.5,0.5" Foreground="White" IsChecked="True" UseLayoutRounding="False" Content="Consumer Format" FontStretch="SemiCondensed"/>
+				<TextBlock Margin="55,5,0,0" Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="White" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">Ex: Windows10_SingleLanguage_InsiderPreview_x32_EN-US_10074.iso</TextBlock>
+				<RadioButton Name="Partner" Padding="6,-3,0,0" GroupName="Group3" HorizontalAlignment="Left" Margin="35,15,0,0" VerticalAlignment="Top" FontSize="15" RenderTransformOrigin="0.5,0.5" Foreground="White" IsChecked="False" UseLayoutRounding="False" Content="Partner / Internal Format" FontStretch="SemiCondensed"/>
+				<TextBlock Margin="55,5,0,0" Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="White" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">Ex: 10074.0.150424-1350.FBL_IMPRESSIVE_CLIENTSINGLELANGUAGE_RET_X86FRE_EN-US.ISO</TextBlock>
+				<RadioButton Name="Windows7" Padding="6,-3,0,0" GroupName="Group3" HorizontalAlignment="Left" Margin="35,15,0,0" VerticalAlignment="Top" FontSize="15" RenderTransformOrigin="0.5,0.5" Foreground="White" IsChecked="False" UseLayoutRounding="False" Content="Windows 7 and earlier Format" FontStretch="SemiCondensed"/>
+				<TextBlock Margin="55,5,0,0" Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="White" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">Ex: en_10074.0.150424-1350_x86fre_singlelanguage_en-us_CoreSingleLanguage-J_CSLA_X86FRE_EN-US_DV5.iso</TextBlock>
+			</StackPanel>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button2" Content="Back" Height="25" Margin="449,20,110,0" IsDefault="False"/>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button" Content="Next" Height="25" Margin="554,20,5,0" IsDefault="True"/>
+		</StackPanel>
+	</Grid>
+</UserControl>

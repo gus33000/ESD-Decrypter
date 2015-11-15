@@ -1,0 +1,59 @@
+<UserControl
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="RSAKey">
+	<Grid>
+		<Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                <GradientStop Color="#FF00A6DD"/>
+				<GradientStop Color="#FF00A6DD" Offset="1.5"/>
+                <GradientStop Color="#FF0081AC" Offset="0.100"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+		<StackPanel Orientation="Vertical">
+			<StackPanel Margin="0,0,0,5">
+				<Label Margin="0,30,0,0" Width="630" Foreground="White" FontFamily="Segoe UI Light" FontStretch="SemiCondensed" FontWeight="Thin" TextOptions.TextFormattingMode="Display">
+					<TextBlock TextWrapping="WrapWithOverflow" FontSize="32">
+						Cryptographic key
+					</TextBlock>
+				</Label>
+				<TextBlock Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="LightGray" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">
+					Please enter the complete Cryptographic RSA Key which correspond to your ESD File. 
+					We will still attempt to use our keys to try to decrypt the esd file.
+				</TextBlock>
+			</StackPanel>
+			<StackPanel Margin="5,15,35,0">
+				<TextBox Name="RSAKeyString" Margin="35,15,0,0">
+					<TextBox.Style>
+						<Style TargetType="TextBox" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+							<Style.Resources>
+								<VisualBrush x:Key="CueBannerBrush" AlignmentX="Left" AlignmentY="Center" Stretch="None">
+									<VisualBrush.Visual>
+										<Label Content="Please enter your Cryptographic key" Foreground="LightGray"/>
+									</VisualBrush.Visual>
+								</VisualBrush>
+							</Style.Resources>
+							<Style.Triggers>
+								<Trigger Property="Text" Value="{x:Static sys:String.Empty}">
+									<Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
+								</Trigger>
+								<Trigger Property="Text" Value="{x:Null}">
+									<Setter Property="Background" Value="{StaticResource CueBannerBrush}" />
+								</Trigger>
+								<Trigger Property="IsKeyboardFocused" Value="True">
+									<Setter Property="Background" Value="White" />
+								</Trigger>
+							</Style.Triggers>
+						</Style>
+					</TextBox.Style>
+				</TextBox>
+			</StackPanel>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button2" Content="Back" Height="25" Margin="449,20,110,0" IsDefault="False"/>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button" Content="Next" Height="25" Margin="554,20,5,0" IsDefault="True"/>
+		</StackPanel>
+	</Grid>
+</UserControl>

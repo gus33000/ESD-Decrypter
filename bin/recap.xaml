@@ -1,0 +1,114 @@
+<UserControl
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="Recap">
+	<Grid>
+		<Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                <GradientStop Color="#FF00A6DD"/>
+				<GradientStop Color="#FF00A6DD" Offset="1.5"/>
+                <GradientStop Color="#FF0081AC" Offset="0.100"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+		<StackPanel Orientation="Vertical">
+			<StackPanel Margin="0,0,0,5">
+				<Label Margin="0,30,0,0" Width="630" Foreground="White" FontFamily="Segoe UI Light" FontStretch="SemiCondensed" FontWeight="Thin" TextOptions.TextFormattingMode="Display">
+					<TextBlock TextWrapping="WrapWithOverflow" FontSize="32">
+						Here's what we collected
+					</TextBlock>
+				</Label>
+				<TextBlock Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="LightGray" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">
+					Nope, it's not telemetry data :P
+				</TextBlock>
+			</StackPanel>
+			<StackPanel Margin="35,15,0,0">
+				<Grid Name="ESDSelected" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">Selected an ESD File</TextBlock>
+				</Grid>
+				<Grid Name="WIMFormat" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark_" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll choose WIM for the image format</TextBlock>
+				</Grid>
+				<Grid Name="ESDFormat" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark__" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll choose ESD for the image format</TextBlock>
+				</Grid>
+				<Grid Name="ConsumerFormat" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark___" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll choose Consumer for the File Name format</TextBlock>
+				</Grid>
+				<Grid Name="PartnerFormat" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark____" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll choose Partner for the File Name format</TextBlock>
+				</Grid>
+				<Grid Name="Windows7Format" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark_____" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll choose Windows 7 for the File Name format</TextBlock>
+				</Grid>
+				<Grid Name="CustomRSAKey" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark______" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll use a custom cryptographic key:</TextBlock>
+				</Grid>
+				<Grid Name="NoCustomRSAKey" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark_______" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll use default cryptographic keys</TextBlock>
+				</Grid>
+				<Grid Name="NoCustomPathSelected" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark________" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll use the default Destination Path</TextBlock>
+				</Grid>
+				<Grid Name="CustomPathSelected" Visibility="Collapsed" Margin="0,15,0,0">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+					<Image Name="CheckMark_________" Width="20" Height="20"/>
+					<TextBlock Margin="5,1,0,0" Width="620" TextWrapping="WrapWithOverflow" Foreground="White" FontSize="15" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" Grid.Column="1">We'll use a custom Destination Path:</TextBlock>
+				</Grid>
+			</StackPanel>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button2" Content="Back" Height="25" Margin="449,20,110,0" IsDefault="False"/>
+		</StackPanel>
+		<StackPanel Orientation="Vertical" Margin="10,454,35,10">
+			<Button Name="button" Content="Next" Height="25" Margin="554,20,5,0" IsDefault="True"/>
+		</StackPanel>
+	</Grid>
+</UserControl>
