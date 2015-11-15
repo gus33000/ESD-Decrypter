@@ -26,7 +26,7 @@ start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log"
 Write-Host '
 Based on the script by abbodi1406
 ESD Toolkit - November Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 3.0
-For testing purposes only. Build 3.0.10120.0.th2_release_multi(gus33000).151111-1134
+For testing purposes only. Build 3.0.10121.0.th2_release_multi(gus33000).151111-2055
 '
 
 Write-Host 'Loading utilities module...'
