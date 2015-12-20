@@ -39,17 +39,17 @@ function Get-ScriptDirectory {
     Split-Path -parent $PSCommandPath
 }
 
-# Is this a Wow64 powershell host
+#Is this a Wow64 powershell host
 function Test-Wow64() {
 	return (Test-Win32) -and (test-path env:\PROCESSOR_ARCHITEW6432)
 }
 
-# Is this a 64 bit process
+#Is this a 64 bit process
 function Test-Win64() {
 	return [IntPtr]::size -eq 8
 }
 
-# Is this a 32 bit process
+#Is this a 32 bit process
 function Test-Win32() {
 	return [IntPtr]::size -eq 4
 }
@@ -249,8 +249,8 @@ function global:Get-InfosFromESD (
 	$WIMInfo["header"] = @{}
 	$WIMInfo["header"]["ImageCount"] = ($counter.toString())
 	$result.Editions = $editions	
-	# Converting standards architecture names to friendly ones, if we didn't found any, we put the standard one instead * cough * arm / ia64,
-	# Yes, IA64 is still a thing for server these days...
+	#Converting standards architecture names to friendly ones, if we didn't found any, we put the standard one instead * cough * arm / ia64,
+	#Yes, IA64 is still a thing for server these days...
 	if ($WIMInfo[4].Architecture -eq 'x86') {
 		$result.Architecture = 'x86'
 	} elseif ($WIMInfo[4].Architecture -eq 'x86_64') {
@@ -258,7 +258,7 @@ function global:Get-InfosFromESD (
 	} else {
 		$result.Architecture = $WIMInfo[4].Architecture
 	}	
-	# Gathering Compiledate and the buildbranch from the ntoskrnl executable.
+	#Gathering Compiledate and the buildbranch from the ntoskrnl executable.
 	Write-Host 'Checking critical system files for a build string and build type information...'
 	& $wimlib extract $ESD[0] 4 windows\system32\ntkrnlmp.exe windows\system32\ntoskrnl.exe --nullglob --no-acls | out-null
 	if (Test-Path .\ntkrnlmp.exe) {
@@ -286,7 +286,7 @@ function global:Get-InfosFromESD (
 	$result.MinorVersion = $ProductVersion.split('.')[1]
 	$result.BuildNumber = $ProductVersion.split('.')[2]
 	$result.DeltaVersion = $ProductVersion.split('.')[3]	
-	# Gathering Compiledate and the buildbranch from the build registry.
+	#Gathering Compiledate and the buildbranch from the build registry.
 	Write-Host 'Checking registry for a more accurate build string...'
 	& $wimlib extract $ESD[0] 4 windows\system32\config\ --no-acls | out-null
 	& 'reg' load HKLM\RenameISOs .\config\SOFTWARE | out-null
@@ -306,7 +306,7 @@ function global:Get-InfosFromESD (
 	}
 	& 'reg' unload HKLM\RenameISOs | out-null
 	remove-item .\config\ -recurse -force
-	# Defining if server or client thanks to Microsoft including 'server' in the server sku names
+	#Defining if server or client thanks to Microsoft including 'server' in the server sku names
 	if (($WIMInfo.header.ImageCount -gt 4) -and (($WIMInfo[4].EditionID) -eq $null)) {
 		$result.Type = 'client'
 		$result.Sku = $null
@@ -485,15 +485,15 @@ Function global:prepforconvert (
 				$Value,
 				[switch]$AppendContent
 			)
-			# This is kind of a hack, there may be a better way to do this
+			#This is kind of a hack, there may be a better way to do this
 			If ($Property -eq "Close") {
 				$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
 				Return
 			}
-			# This updates the control based on the parameters passed to the function
+			#This updates the control based on the parameters passed to the function
 			$syncHash.$Control.Dispatcher.Invoke(
 				[action]{
-				# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
+				#This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
 				If ($PSBoundParameters['AppendContent']) {
 					$syncHash.$Control.AppendText($Value)
 				} Else {
@@ -728,15 +728,15 @@ function Convert-ESD (
 						$Value,
 						[switch]$AppendContent
 					)
-					# This is kind of a hack, there may be a better way to do this
+					#This is kind of a hack, there may be a better way to do this
 					If ($Property -eq "Close") {
 						$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
 						Return
 					}
-					# This updates the control based on the parameters passed to the function
+					#This updates the control based on the parameters passed to the function
 					$syncHash.$Control.Dispatcher.Invoke(
 						[action]{
-						# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
+						#This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
 						If ($PSBoundParameters['AppendContent']) {
 							$syncHash.$Control.AppendText($Value)
 						} Else {
@@ -1100,15 +1100,15 @@ function Convert-ESD (
 							$Value,
 							[switch]$AppendContent
 						)
-						# This is kind of a hack, there may be a better way to do this
+						#This is kind of a hack, there may be a better way to do this
 						If ($Property -eq "Close") {
 							$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
 							Return
 						}
-						# This updates the control based on the parameters passed to the function
+						#This updates the control based on the parameters passed to the function
 						$syncHash.$Control.Dispatcher.Invoke(
 							[action]{
-							# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
+							#This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
 							If ($PSBoundParameters['AppendContent']) {
 								$syncHash.$Control.AppendText($Value)
 							} Else {
