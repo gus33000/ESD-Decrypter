@@ -26,7 +26,7 @@ function Menu-Select($displayoptions, $arrayofoptions) {
 		foreach ($item in $displayoptions) {
 			$counter++
 			$padding = ' ' * ((([string]$displayoptions.Length).Length) - (([string]$counter).Length))
-			Write-host -ForeGroundColor White ('['+$counter+']'+$padding+' '+$item) 
+			Write-host -ForeGroundColor White ('['+$counter+']'+$padding+' '+$item)
 		}
 		Write-Host ''
 		$choice = read-host -prompt "Select number and press enter"
@@ -111,8 +111,8 @@ function Copy-File {
 function decrypt-ESDs (
 	[parameter(Mandatory=$true)]
 	[Boolean] $Backup,
-	[ValidateNotNullOrEmpty()]  
-    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[ValidateNotNullOrEmpty()]
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})]
 	[parameter(Mandatory=$true)]
 	[Array] $ESD,
 	[parameter(Mandatory=$false)]
@@ -469,49 +469,49 @@ function global:Get-InfosFromESD (
 
 		
 Function global:prepforconvert (
-	[ValidateNotNullOrEmpty()]  
-    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[ValidateNotNullOrEmpty()]
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})]
 	[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
 	[Array] $esdfiles,
 	[parameter(Mandatory=$false,HelpMessage="The crypto key that will be used to decrypt the ESD file.")]
 	$CryptoKey
 )
 {
-	Begin { 
-		Function Update-Window { 
-			Param ( 
-				$Control, 
-				$Property, 
-				$Value, 
-				[switch]$AppendContent 
-			) 
-			# This is kind of a hack, there may be a better way to do this 
-			If ($Property -eq "Close") { 
-				$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
-				Return 
-			} 
-			# This updates the control based on the parameters passed to the function 
+	Begin {
+		Function Update-Window {
+			Param (
+				$Control,
+				$Property,
+				$Value,
+				[switch]$AppendContent
+			)
+			# This is kind of a hack, there may be a better way to do this
+			If ($Property -eq "Close") {
+				$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
+				Return
+			}
+			# This updates the control based on the parameters passed to the function
 			$syncHash.$Control.Dispatcher.Invoke(
-				[action]{ 
-				# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
-				If ($PSBoundParameters['AppendContent']) { 
-					$syncHash.$Control.AppendText($Value) 
-				} Else { 
-					$syncHash.$Control.$Property = $Value 
-				} 
-			}, "Normal") 
-		} 
-		[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
-		$syncHash = [hashtable]::Synchronized(@{}) 
-		$newRunspace =[runspacefactory]::CreateRunspace() 
-		$newRunspace.ApartmentState = "STA" 
-		$newRunspace.ThreadOptions = "ReuseThread"           
-		$newRunspace.Open() 
-		$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
-		$psCmd = [PowerShell]::Create().AddScript({    
+				[action]{
+				# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
+				If ($PSBoundParameters['AppendContent']) {
+					$syncHash.$Control.AppendText($Value)
+				} Else {
+					$syncHash.$Control.$Property = $Value
+				}
+			}, "Normal")
+		}
+		[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework')
+		$syncHash = [hashtable]::Synchronized(@{})
+		$newRunspace =[runspacefactory]::CreateRunspace()
+		$newRunspace.ApartmentState = "STA"
+		$newRunspace.ThreadOptions = "ReuseThread"
+		$newRunspace.Open()
+		$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
+		$psCmd = [PowerShell]::Create().AddScript({
 			[xml]$xaml = Get-Content -Path 'bin\prepconvert.xaml'
-			$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
-			$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
+			$reader=(New-Object System.Xml.XmlNodeReader $xaml)
+			$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
 			$xaml.SelectNodes("//*[@Name]") | %{
 				$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 			}
@@ -522,13 +522,13 @@ Function global:prepforconvert (
 					$_.Cancel = $true
 				}
 			})
-			$syncHash.Window.ShowDialog() 
+			$syncHash.Window.ShowDialog()
 			$syncHash.Error = $Error
-		}) 
-		$psCmd.Runspace = $newRunspace 
-		$data = $psCmd.BeginInvoke() 
-		While (!($syncHash.Window.IsInitialized)) { 
-		   Start-Sleep -S 1 
+		})
+		$psCmd.Runspace = $newRunspace
+		$data = $psCmd.BeginInvoke()
+		While (!($syncHash.Window.IsInitialized)) {
+		   Start-Sleep -S 1
 		}
 	}
 	Process {
@@ -551,11 +551,11 @@ Function global:prepforconvert (
 }
 
 function Convert-ESD (
-	[ValidateNotNullOrEmpty()]  
-    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[ValidateNotNullOrEmpty()]
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})]
 	[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
 	[Array] $esdfiles,
-	[ValidateNotNullOrEmpty()]  
+	[ValidateNotNullOrEmpty()]
 	[parameter(Mandatory=$true,HelpMessage="The place where the final ISO file will be stored")]
 	[System.IO.DirectoryInfo] $Destination,
 	[ValidateNotNullOrEmpty()]
@@ -584,11 +584,11 @@ function Convert-ESD (
 	foreach ($architecture in $esdinfos.Architecture) {
 		$items[$architecture] = @{}
 		$items[$architecture]["SetupESDs"] = @()
-		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) { 
+		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) {
 			$items[$architecture]["SetupESDs"] += $esd | ? { -not (($items.$architecture.SetupESDs | ? {$_.LanguageCode -eq $esd.LanguageCode}).BuildString -contains $esd.BuildString) }
 		}
 		$items[$architecture]["WinREESDs"] = @()
-		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) { 
+		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) {
 			$items[$architecture]["WinREESDs"] += $esd | ? { -not (($items.$architecture.WinREESDs | ? {$_.LanguageCode -eq $esd.LanguageCode}).BuildString -contains $esd.BuildString) }
 		}
 		$items[$architecture]["InstallESDs"] = @()
@@ -720,20 +720,20 @@ function Convert-ESD (
 			$extensiontype
 		)
 		{
-			Begin { 
-				Function Update-Window { 
-					Param ( 
-						$Control, 
-						$Property, 
-						$Value, 
-						[switch]$AppendContent 
-					) 
-					# This is kind of a hack, there may be a better way to do this 
-					If ($Property -eq "Close") { 
-						$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
-						Return 
-					} 
-					# This updates the control based on the parameters passed to the function 
+			Begin {
+				Function Update-Window {
+					Param (
+						$Control,
+						$Property,
+						$Value,
+						[switch]$AppendContent
+					)
+					# This is kind of a hack, there may be a better way to do this
+					If ($Property -eq "Close") {
+						$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
+						Return
+					}
+					# This updates the control based on the parameters passed to the function
 					$syncHash.$Control.Dispatcher.Invoke(
 						[action]{
 						# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
@@ -746,12 +746,12 @@ function Convert-ESD (
 				}
 				function Export-InstallWIM (
 					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_)})] 
+					[ValidateScript({(Test-Path $_)})]
 					[Array] $ESD,
 					[parameter(Mandatory=$true)]
 					[Int] $Index,
 					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_\)})] 
+					[ValidateScript({(Test-Path $_\)})]
 					[String] $Output,
 					[parameter(Mandatory=$true)]
 					[String] $ExtensionType
@@ -835,13 +835,13 @@ function Convert-ESD (
 				}
 				function Create-SetupMedia (
 					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_)})] 
+					[ValidateScript({(Test-Path $_)})]
 					[String] $SetupESD,
 					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_)})] 
+					[ValidateScript({(Test-Path $_)})]
 					[String] $WinREESD,
 					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_\)})] 
+					[ValidateScript({(Test-Path $_\)})]
 					[String] $Output
 				)
 				{
@@ -911,17 +911,17 @@ function Convert-ESD (
 					Update-Window ConvertProgress Value 0
 					Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\check.png"
 				}
-				[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
-				$syncHash = [hashtable]::Synchronized(@{}) 
-				$newRunspace =[runspacefactory]::CreateRunspace() 
-				$newRunspace.ApartmentState = "STA" 
-				$newRunspace.ThreadOptions = "ReuseThread"           
-				$newRunspace.Open() 
-				$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
-				$psCmd = [PowerShell]::Create().AddScript({    
+				[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework')
+				$syncHash = [hashtable]::Synchronized(@{})
+				$newRunspace =[runspacefactory]::CreateRunspace()
+				$newRunspace.ApartmentState = "STA"
+				$newRunspace.ThreadOptions = "ReuseThread"
+				$newRunspace.Open()
+				$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
+				$psCmd = [PowerShell]::Create().AddScript({
 					[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
-					$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
-					$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
+					$reader=(New-Object System.Xml.XmlNodeReader $xaml)
+					$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
 					$xaml.SelectNodes("//*[@Name]") | %{
 						$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 					}
@@ -937,13 +937,13 @@ function Convert-ESD (
 							$_.Cancel = $true
 						}
 					})
-					$syncHash.Window.ShowDialog() | Out-Null 
+					$syncHash.Window.ShowDialog() | Out-Null
 					$syncHash.Error = $Error
-				}) 
-				$psCmd.Runspace = $newRunspace 
-				$data = $psCmd.BeginInvoke() 
-				While (!($syncHash.Window.IsInitialized)) { 
-				   Start-Sleep -S 1 
+				})
+				$psCmd.Runspace = $newRunspace
+				$data = $psCmd.BeginInvoke()
+				While (!($syncHash.Window.IsInitialized)) {
+				   Start-Sleep -S 1
 				}
 			}
 			Process {
@@ -1092,38 +1092,38 @@ function Convert-ESD (
 				$extensiontype
 			)
 			{
-				Begin { 
-					Function Update-Window { 
-						Param ( 
-							$Control, 
-							$Property, 
-							$Value, 
-							[switch]$AppendContent 
-						) 
-						# This is kind of a hack, there may be a better way to do this 
-						If ($Property -eq "Close") { 
-							$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
-							Return 
-						} 
-						# This updates the control based on the parameters passed to the function 
+				Begin {
+					Function Update-Window {
+						Param (
+							$Control,
+							$Property,
+							$Value,
+							[switch]$AppendContent
+						)
+						# This is kind of a hack, there may be a better way to do this
+						If ($Property -eq "Close") {
+							$syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal")
+							Return
+						}
+						# This updates the control based on the parameters passed to the function
 						$syncHash.$Control.Dispatcher.Invoke(
-							[action]{ 
-							# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
-							If ($PSBoundParameters['AppendContent']) { 
-								$syncHash.$Control.AppendText($Value) 
-							} Else { 
-								$syncHash.$Control.$Property = $Value 
-							} 
-						}, "Normal") 
-					} 
+							[action]{
+							# This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps
+							If ($PSBoundParameters['AppendContent']) {
+								$syncHash.$Control.AppendText($Value)
+							} Else {
+								$syncHash.$Control.$Property = $Value
+							}
+						}, "Normal")
+					}
 					function Export-InstallWIM (
 						[parameter(Mandatory=$true)]
-						[ValidateScript({(Test-Path $_)})] 
+						[ValidateScript({(Test-Path $_)})]
 						[Array] $ESD,
 						[parameter(Mandatory=$true)]
 						[Int] $Index,
 						[parameter(Mandatory=$true)]
-						[ValidateScript({(Test-Path $_\)})] 
+						[ValidateScript({(Test-Path $_\)})]
 						[String] $Output,
 						[parameter(Mandatory=$true)]
 						[String] $ExtensionType
@@ -1207,13 +1207,13 @@ function Convert-ESD (
 					}
 					function Create-SetupMedia (
 						[parameter(Mandatory=$true)]
-						[ValidateScript({(Test-Path $_)})] 
+						[ValidateScript({(Test-Path $_)})]
 						[String] $SetupESD,
 						[parameter(Mandatory=$true)]
-						[ValidateScript({(Test-Path $_)})] 
+						[ValidateScript({(Test-Path $_)})]
 						[String] $WinREESD,
 						[parameter(Mandatory=$true)]
-						[ValidateScript({(Test-Path $_\)})] 
+						[ValidateScript({(Test-Path $_\)})]
 						[String] $Output
 					) {
 						if (Test-Path $Output\sources\boot.wim) {
@@ -1282,17 +1282,17 @@ function Convert-ESD (
 						Update-Window ConvertProgress Value 0
 						Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\check.png"
 					}
-					[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
-					$syncHash = [hashtable]::Synchronized(@{}) 
-					$newRunspace =[runspacefactory]::CreateRunspace() 
-					$newRunspace.ApartmentState = "STA" 
-					$newRunspace.ThreadOptions = "ReuseThread"           
-					$newRunspace.Open() 
-					$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
-					$psCmd = [PowerShell]::Create().AddScript({    
+					[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework')
+					$syncHash = [hashtable]::Synchronized(@{})
+					$newRunspace =[runspacefactory]::CreateRunspace()
+					$newRunspace.ApartmentState = "STA"
+					$newRunspace.ThreadOptions = "ReuseThread"
+					$newRunspace.Open()
+					$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
+					$psCmd = [PowerShell]::Create().AddScript({
 						[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
-						$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
-						$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
+						$reader=(New-Object System.Xml.XmlNodeReader $xaml)
+						$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
 						$xaml.SelectNodes("//*[@Name]") | %{
 							$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 						}
@@ -1309,13 +1309,13 @@ function Convert-ESD (
 								$_.Cancel = $true
 							}
 						})
-						$syncHash.Window.ShowDialog() | Out-Null 
+						$syncHash.Window.ShowDialog() | Out-Null
 						$syncHash.Error = $Error
-					}) 
-					$psCmd.Runspace = $newRunspace 
-					$data = $psCmd.BeginInvoke() 
-					While (!($syncHash.Window.IsInitialized)) { 
-					   Start-Sleep -S 1 
+					})
+					$psCmd.Runspace = $newRunspace
+					$data = $psCmd.BeginInvoke()
+					While (!($syncHash.Window.IsInitialized)) {
+					   Start-Sleep -S 1
 					}
 				}
 				Process {
