@@ -20,7 +20,7 @@ Write-Host 'Loading utilities module...'
 New-Enum iso.filenametype Partner Consumer Windows7
 New-Enum wim.extensiontype WIM ESD
 
-function Menu-Select($displayoptions, $arrayofoptions) {
+function Menu-Select ($displayoptions, $arrayofoptions) {
 	Do {
 		$counter = 0
 		foreach ($item in $displayoptions) {
@@ -40,17 +40,17 @@ function Get-ScriptDirectory {
 }
 
 #Is this a Wow64 powershell host
-function Test-Wow64() {
+function Test-Wow64 {
 	return (Test-Win32) -and (test-path env:\PROCESSOR_ARCHITEW6432)
 }
 
 #Is this a 64 bit process
-function Test-Win64() {
+function Test-Win64 {
 	return [IntPtr]::size -eq 8
 }
 
 #Is this a 32 bit process
-function Test-Win32() {
+function Test-Win32 {
 	return [IntPtr]::size -eq 4
 }
 
@@ -775,7 +775,8 @@ function Convert-ESD (
 							if ($operationname -eq $null) {
 								$operationname = $_
 							}
-							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							$global:lastprogress = $progress
+							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 							if ($progress -match "[0-9]") {
 								$total = $_.split(' ')[0]
 								$totalsize = $_.split(' ')[3]
@@ -786,8 +787,10 @@ function Convert-ESD (
 								} else {
 									[long]$secsleft = 0
 								}
-								Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
-								Update-Window ConvertProgress Value $progress
+								#Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
+								if ($lastprogress -ne $progress) {
+									Update-Window ConvertProgress Value $progress
+								}
 							}
 							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
 								cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
@@ -811,7 +814,8 @@ function Convert-ESD (
 							if ($operationname -eq $null) {
 								$operationname = $_
 							}
-							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							$global:lastprogress = $progress
+							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 							if ($progress -match "[0-9]") {
 								$total = $_.split(' ')[0]
 								$totalsize = $_.split(' ')[3]
@@ -822,8 +826,10 @@ function Convert-ESD (
 								} else {
 									[long]$secsleft = 0
 								}
-								Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
-								Update-Window ConvertProgress Value $progress
+								#Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
+								if ($lastprogress -ne $progress) {
+									Update-Window ConvertProgress Value $progress
+								}
 							}
 							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
 								cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
@@ -841,8 +847,7 @@ function Convert-ESD (
 					[parameter(Mandatory=$true)]
 					[ValidateScript({(Test-Path $_\)})]
 					[String] $Output
-				)
-				{
+				) {
 					if (Test-Path $Output\sources\boot.wim) {
 						return 1
 					}
@@ -863,7 +868,8 @@ function Convert-ESD (
 						if ($operationname -eq $null) {
 							$operationname = $_
 						}
-						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+						$global:lastprogress = $progress
+						$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 						if ($progress -match "[0-9]") {
 							$total = $_.split(' ')[0]
 							$totalsize = $_.split(' ')[3]
@@ -874,8 +880,10 @@ function Convert-ESD (
 							} else {
 								[long]$secsleft = 0
 							}
-							Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
-							Update-Window ConvertProgress Value $progress
+							#Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
+							if ($lastprogress -ne $progress) {
+								Update-Window ConvertProgress Value $progress
+							}
 						}
 					}
 					$sw.Stop();
@@ -889,7 +897,8 @@ function Convert-ESD (
 						if ($operationname -eq $null) {
 							$operationname = $_
 						}
-						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+						$global:lastprogress = $progress
+						$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 						if ($progress -match "[0-9]") {
 							$total = $_.split(' ')[0]
 							$totalsize = $_.split(' ')[3]
@@ -900,8 +909,10 @@ function Convert-ESD (
 							} else {
 								[long]$secsleft = 0
 							}
-							Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
-							Update-Window ConvertProgress Value $progress
+							#Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
+							if ($lastprogress -ne $progress) {
+								Update-Window ConvertProgress Value $progress
+							}
 						}
 					}
 					$sw.Stop();
@@ -1147,7 +1158,8 @@ function Convert-ESD (
 								if ($operationname -eq $null) {
 									$operationname = $_
 								}
-								$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								$global:lastprogress = $progress
+								$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 								if ($progress -match "[0-9]") {
 									$total = $_.split(' ')[0]
 									$totalsize = $_.split(' ')[3]
@@ -1158,8 +1170,10 @@ function Convert-ESD (
 									} else {
 										[long]$secsleft = 0
 									}
-									Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
-									Update-Window ConvertProgress Value $progress
+									#Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
+									if ($lastprogress -ne $progress) {
+										Update-Window ConvertProgress Value $progress
+									}
 								}
 								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
 									cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
@@ -1183,7 +1197,8 @@ function Convert-ESD (
 								if ($operationname -eq $null) {
 									$operationname = $_
 								}
-								$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								$global:lastprogress = $progress
+								$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 								if ($progress -match "[0-9]") {
 									$total = $_.split(' ')[0]
 									$totalsize = $_.split(' ')[3]
@@ -1194,8 +1209,10 @@ function Convert-ESD (
 									} else {
 										[long]$secsleft = 0
 									}
-									Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
-									Update-Window ConvertProgress Value $progress
+									#Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
+									if ($lastprogress -ne $progress) {
+										Update-Window ConvertProgress Value $progress
+									}
 								}
 								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
 									cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
@@ -1234,7 +1251,8 @@ function Convert-ESD (
 							if ($operationname -eq $null) {
 								$operationname = $_
 							}
-							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							$global:lastprogress = $progress
+							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 							if ($progress -match "[0-9]") {
 								$total = $_.split(' ')[0]
 								$totalsize = $_.split(' ')[3]
@@ -1245,8 +1263,10 @@ function Convert-ESD (
 								} else {
 									[long]$secsleft = 0
 								}
-								Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
-								Update-Window ConvertProgress Value $progress
+								#Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
+								if ($lastprogress -ne $progress) {
+									Update-Window ConvertProgress Value $progress
+								}
 							}
 						}
 						$sw.Stop();
@@ -1260,7 +1280,8 @@ function Convert-ESD (
 							if ($operationname -eq $null) {
 								$operationname = $_
 							}
-							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							$global:lastprogress = $progress
+							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
 							if ($progress -match "[0-9]") {
 								$total = $_.split(' ')[0]
 								$totalsize = $_.split(' ')[3]
@@ -1271,8 +1292,10 @@ function Convert-ESD (
 								} else {
 									[long]$secsleft = 0
 								}
-								Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
-								Update-Window ConvertProgress Value $progress
+								#Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
+								if ($lastprogress -ne $progress) {
+									Update-Window ConvertProgress Value $progress
+								}
 							}
 						}
 						$sw.Stop();
@@ -1358,7 +1381,7 @@ function Convert-ESD (
 	}
 }
 
-function LoadXamlFile($path)
+function LoadXamlFile ($path)
 {
 	[xml]$xmlWPF = Get-Content -Path $path
     $xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
@@ -1372,7 +1395,7 @@ function LoadXamlFile($path)
 
 $Global:LastPage = @()
 
-function SetPage($MainWindow, $NewPage) {
+function SetPage ($MainWindow, $NewPage) {
 	[array]$Global:LastPage += $MainWindow.Window.Content.Name
 	$MainWindow.Window.Content = $NewPage.Window
 	$Global:CurrentPage = $NewPage
