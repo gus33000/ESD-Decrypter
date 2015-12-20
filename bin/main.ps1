@@ -4,9 +4,9 @@ try{
 	Throw "Failed to load Windows Presentation Framework assemblies."
 }
 
-$Host.UI.RawUI.WindowTitle = "ESD Toolkit - November Tech Preview 2015"
+$Host.UI.RawUI.WindowTitle = "ESD Toolkit - December Tech Preview 2015"
 
-start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log" | out-null
+start-transcript -path ".\logs\WindowsSetupToolKit_$(get-date -format yyMMdd-HHmm).log" | out-null
 
 Write-Host '
 Based on the script by abbodi1406
