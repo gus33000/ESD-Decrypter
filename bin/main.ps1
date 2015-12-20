@@ -655,7 +655,7 @@ function Convert-ESD (
 							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
 							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 						} else {
-							$Page = LoadXamlFile ('bin\'+$lastpage+".xaml")
+							$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
 							$Global:LastPage = @()
 						}
 						SetPage $MainWindow $Page
@@ -1047,7 +1047,7 @@ function Convert-ESD (
 							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
 							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 						} else {
-							$Page = LoadXamlFile ('bin\'+$lastpage+".xaml")
+							$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
 							$Global:LastPage = @()
 						}
 						SetPage $MainWindow $Page
@@ -1579,7 +1579,7 @@ function SetPage($MainWindow, $NewPage) {
 				$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
 				$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 			} else {
-				$Page = LoadXamlFile ('bin\'+$lastpage+".xaml")
+				$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
 				$Global:LastPage = @()
 			}
 			SetPage $MainWindow $Page
