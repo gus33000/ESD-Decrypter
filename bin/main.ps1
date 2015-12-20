@@ -1582,7 +1582,7 @@ function SetPage ($MainWindow, $NewPage) {
 				} else {
 					Convert-ESD -CryptoKey $VarRSAKey -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
 				}
-				[xml]$Global:xmlWPF = Get-Content -Path 'bin\ConvertEnd.xaml'
+				[xml]$Global:xmlWPF = Get-Content -Path 'bin\xaml\ConvertEnd.xaml'
 				$Global:xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
 				$xmlWPF.SelectNodes("//*[@Name]") | %{
 					Set-Variable -Name ($_.Name) -Value $xamGUI.FindName($_.Name) -Scope Global
