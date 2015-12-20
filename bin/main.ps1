@@ -667,8 +667,8 @@ function Convert-ESD (
 					}
 				})
 			}
-			$MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
-			$dropdown = LoadXamlFile 'bin\dropdown.xaml'
+			$MainWindow = LoadXamlFile 'bin\xaml\MainWindow.xaml'
+			$dropdown = LoadXamlFile 'bin\xaml\dropdown.xaml'
 			SetPage $MainWindow $dropdown
 			$MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
 			$MainWindow.Window.ShowDialog()
@@ -1059,9 +1059,9 @@ function Convert-ESD (
 					}
 				})
 			}
-			$MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
+			$MainWindow = LoadXamlFile 'bin\xaml\MainWindow.xaml'
 			$MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
-			$dropdown = LoadXamlFile 'bin\dropdown_single.xaml'
+			$dropdown = LoadXamlFile 'bin\xaml\dropdown_single.xaml'
 			SetPage $MainWindow $dropdown
 			$MainWindow.Window.ShowDialog()
 			return $Global:WinPEESD, $Global:WinREESD
@@ -1482,7 +1482,7 @@ function SetPage($MainWindow, $NewPage) {
 		Switch ($MainWindow.Window.Content.Name) {
 			"Welcome" {
 				if ($Global:CurrentPage.ConvertESD.isChecked) {
-					$ImageFormat = LoadXamlFile 'bin\ImageFormat.xaml'
+					$ImageFormat = LoadXamlFile 'bin\xaml\ImageFormat.xaml'
 					SetPage $MainWindow $ImageFormat
 				} elseif ($Global:CurrentPage.Download.isChecked) {
 					$MainWindow.Window.Close()
@@ -1494,7 +1494,7 @@ function SetPage($MainWindow, $NewPage) {
 				} elseif ($Global:CurrentPage.ESD.isChecked) {
 					$Global:VarImageFormat = "ESD"
 				}
-				$FileFormat = LoadXamlFile 'bin\FileFormat.xaml'
+				$FileFormat = LoadXamlFile 'bin\xaml\FileFormat.xaml'
 				SetPage $MainWindow $FileFormat
 			}
 			"FileFormat" {
@@ -1505,17 +1505,17 @@ function SetPage($MainWindow, $NewPage) {
 				} elseif ($Global:CurrentPage.Windows7.isChecked) {
 					$Global:VarFileFormat = "Windows7"
 				}
-				$AskRSAKey = LoadXamlFile 'bin\AskRSAKey.xaml'
+				$AskRSAKey = LoadXamlFile 'bin\xaml\AskRSAKey.xaml'
 				SetPage $MainWindow $AskRSAKey
 			}
 			"AskRSAKey" {
 				if ($Global:CurrentPage.NoCustomKey.isChecked) {
 					$Global:VarAskRSAKey = $false
-					$AskDestinationPath = LoadXamlFile 'bin\AskDestinationPath.xaml'
+					$AskDestinationPath = LoadXamlFile 'bin\xaml\AskDestinationPath.xaml'
 					SetPage $MainWindow $AskDestinationPath
 				} elseif ($Global:CurrentPage.CustomKey.isChecked) {
 					$Global:VarAskRSAKey = $true
-					$RSAKey = LoadXamlFile 'bin\RSAKey.xaml'
+					$RSAKey = LoadXamlFile 'bin\xaml\RSAKey.xaml'
 					SetPage $MainWindow $RSAKey
 				}
 			}
@@ -1531,12 +1531,12 @@ function SetPage($MainWindow, $NewPage) {
 						return
 					}
 				}
-				$SelectESD = LoadXamlFile 'bin\SelectESD.xaml'
+				$SelectESD = LoadXamlFile 'bin\xaml\SelectESD.xaml'
 				SetPage $MainWindow $SelectESD
 			}
 			"RSAKey" {
 				$Global:VarRSAKey = $Global:CurrentPage.RSAKeyString.Text
-				$AskDestinationPath = LoadXamlFile 'bin\AskDestinationPath.xaml'
+				$AskDestinationPath = LoadXamlFile 'bin\xaml\AskDestinationPath.xaml'
 				SetPage $MainWindow $AskDestinationPath
 			}
 			"SelectESD" {
@@ -1547,7 +1547,7 @@ function SetPage($MainWindow, $NewPage) {
 				if ($Global:VarSelectedFile -eq $null) {
 					return
 				}
-				$Recap = LoadXamlFile 'bin\Recap.xaml'
+				$Recap = LoadXamlFile 'bin\xaml\Recap.xaml'
 				SetPage $MainWindow $Recap
 			}
 			"Recap" {
@@ -1592,8 +1592,8 @@ function SetPage($MainWindow, $NewPage) {
 	})
 }
 
-$MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
+$MainWindow = LoadXamlFile 'bin\xaml\MainWindow.xaml'
 $MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
-$Welcome = LoadXamlFile 'bin\welcome.xaml'
+$Welcome = LoadXamlFile 'bin\xaml\welcome.xaml'
 SetPage $MainWindow $Welcome
 $MainWindow.Window.ShowDialog()
