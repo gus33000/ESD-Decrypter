@@ -652,7 +652,7 @@ function Convert-ESD (
 				$NewPage.Button2.add_Click({
 					if ($lastpage -ne $null) {
 						if ($lastpage -is [system.array]) {
-							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
+							$Page = LoadXamlFile ('bin\xaml\'+$lastpage[-1]+".xaml")
 							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 						} else {
 							$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
@@ -1044,7 +1044,7 @@ function Convert-ESD (
 				$NewPage.Button2.add_Click({
 					if ($lastpage -ne $null) {
 						if ($lastpage -is [system.array]) {
-							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
+							$Page = LoadXamlFile ('bin\xaml\'+$lastpage[-1]+".xaml")
 							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 						} else {
 							$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
@@ -1576,7 +1576,7 @@ function SetPage($MainWindow, $NewPage) {
 	$NewPage.Button2.add_Click({
 		if ($lastpage -ne $null) {
 			if ($lastpage -is [system.array]) {
-				$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
+				$Page = LoadXamlFile ('bin\xaml\'+$lastpage[-1]+".xaml")
 				$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
 			} else {
 				$Page = LoadXamlFile ('bin\xaml\'+$lastpage+".xaml")
