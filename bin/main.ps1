@@ -465,8 +465,7 @@ function global:Get-InfosFromESD (
 	$result.ESDs = [array]$ESD
 	return $result
 }
-
-		
+	
 Function global:prepforconvert (
 	[ValidateNotNullOrEmpty()]
     [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})]
@@ -1592,6 +1591,7 @@ function SetPage($MainWindow, $NewPage) {
 		}
 	})
 }
+
 $MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
 $MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
 $Welcome = LoadXamlFile 'bin\welcome.xaml'
