@@ -507,7 +507,7 @@ Function global:prepforconvert (
 		$newRunspace.Open()
 		$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
 		$psCmd = [PowerShell]::Create().AddScript({
-			[xml]$xaml = Get-Content -Path 'bin\prepconvert.xaml'
+			[xml]$xaml = Get-Content -Path 'bin\xaml\prepconvert.xaml'
 			$reader=(New-Object System.Xml.XmlNodeReader $xaml)
 			$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 			$xaml.SelectNodes("//*[@Name]") | %{
@@ -917,7 +917,7 @@ function Convert-ESD (
 				$newRunspace.Open()
 				$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
 				$psCmd = [PowerShell]::Create().AddScript({
-					[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
+					[xml]$xaml = Get-Content -Path 'bin\xaml\converting.xaml'
 					$reader=(New-Object System.Xml.XmlNodeReader $xaml)
 					$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 					$xaml.SelectNodes("//*[@Name]") | %{
@@ -1288,7 +1288,7 @@ function Convert-ESD (
 					$newRunspace.Open()
 					$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)
 					$psCmd = [PowerShell]::Create().AddScript({
-						[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
+						[xml]$xaml = Get-Content -Path 'bin\xaml\converting.xaml'
 						$reader=(New-Object System.Xml.XmlNodeReader $xaml)
 						$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 						$xaml.SelectNodes("//*[@Name]") | %{
