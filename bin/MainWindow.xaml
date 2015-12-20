@@ -1,5 +1,5 @@
 ﻿<Window Name="ESD_ToolKit"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ESD ToolKit" Height="562" Width="716" ResizeMode="CanMinimize">
+        Title="Windows Setup ToolKit" Height="562" Width="716" ResizeMode="CanMinimize">
 </Window>

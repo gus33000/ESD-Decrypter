@@ -4,23 +4,39 @@ try{
 	Throw "Failed to load Windows Presentation Framework assemblies."
 }
 
-function Get-ScriptDirectory {
-    Split-Path -parent $PSCommandPath
+$Host.UI.RawUI.WindowTitle = "ESD Toolkit - November Tech Preview 2015"
+
+start-transcript -path ".\logs\ESDDecrypter_$(get-date -format yyMMdd-HHmm).log" | out-null
+
+Write-Host '
+Based on the script by abbodi1406
+ESD Toolkit - December Tech Preview 2015 - Copyright 2015 (c) gus33000 - Version 4.0
+For testing purposes only. Build 4.0.10122.0.rs1_release_multi(gus33000).151219-1115
+'
+
+Write-Host 'Loading utilities module...'
+. '.\bin\utils.ps1'
+
+New-Enum iso.filenametype Partner Consumer Windows7
+New-Enum wim.extensiontype WIM ESD
+
+function Menu-Select($displayoptions, $arrayofoptions) {
+	Do {
+		$counter = 0
+		foreach ($item in $displayoptions) {
+			$counter++
+			$padding = ' ' * ((([string]$displayoptions.Length).Length) - (([string]$counter).Length))
+			Write-host -ForeGroundColor White ('['+$counter+']'+$padding+' '+$item) 
+		}
+		Write-Host ''
+		$choice = read-host -prompt "Select number and press enter"
+	} until ([int]$choice -gt 0 -and [int]$choice -le $counter)
+	$choice = $choice - 1
+	return $arrayofoptions[$choice]
 }
 
-function New-Enum ([string] $name) {
-    $appdomain = [System.Threading.Thread]::GetDomain()
-    $assembly = new-object System.Reflection.AssemblyName
-    $assembly.Name = "EmittedEnum"
-	$assemblyBuilder = $appdomain.DefineDynamicAssembly($assembly, 
-	[System.Reflection.Emit.AssemblyBuilderAccess]::Save -bor [System.Reflection.Emit.AssemblyBuilderAccess]::Run);
-    $moduleBuilder = $assemblyBuilder.DefineDynamicModule("DynamicModule", "DynamicModule.mod");
-    $enumBuilder = $moduleBuilder.DefineEnum($name, [System.Reflection.TypeAttributes]::Public, [System.Int32]);
-    for($i = 0; $i -lt $args.Length; $i++)
-    {
-        $null = $enumBuilder.DefineLiteral($args[$i], $i);
-    }
-    $enumBuilder.CreateType() > $null;
+function Get-ScriptDirectory {
+    Split-Path -parent $PSCommandPath
 }
 
 # Is this a Wow64 powershell host
@@ -38,16 +54,6 @@ function Test-Win32() {
 	return [IntPtr]::size -eq 4
 }
 
-New-Enum out.level Info Warning Error
-
-function Output ([out.level] $level, [string] $message) {
-	$output = '['+$level+'] '+$message
-	Write-Host $output
-}
-
-New-Enum iso.filenametype Partner Consumer Windows7
-New-Enum wim.extensiontype WIM ESD
-
 if (Test-Wow64) {
 	$wimlib = '.\bin\wimlib-imagex.exe'
 } elseif (Test-Win64) {
@@ -58,51 +64,7 @@ if (Test-Wow64) {
 	return
 }
 
-function doConvertESD (
-	[ValidateNotNullOrEmpty()]  
-    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
-	[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
-	[Array] $ESD,
-
-	[ValidateNotNullOrEmpty()]  
-    [ValidateScript({(Test-Path $_)})] 
-	[parameter(Mandatory=$true,HelpMessage="The place where the final ISO file will be stored")]
-	[System.IO.DirectoryInfo] $Destination,
-	
-	[ValidateNotNullOrEmpty()]
-	[parameter(Mandatory=$false,HelpMessage="The crypto key that will be used to decrypt the ESD file.")]
-	$CryptoKey,
-	
-	[parameter(Mandatory=$true,HelpMessage="The type of extension used for the Windows Image (WIM or ESD)")]
-	[wim.extensiontype] $extensiontype
-) {
-	Begin { 
-		Function Update-Window { 
-			Param ( 
-				$Control, 
-				$Property, 
-				$Value, 
-				[switch]$AppendContent 
-			) 
-		 
-		   # This is kind of a hack, there may be a better way to do this 
-		   If ($Property -eq "Close") { 
-			  $syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
-			  Return 
-		   } 
-		   
-		   # This updates the control based on the parameters passed to the function 
-		   $syncHash.$Control.Dispatcher.Invoke([action]{ 
-			  # This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
-			   If ($PSBoundParameters['AppendContent']) { 
-				   $syncHash.$Control.AppendText($Value) 
-			   } Else { 
-				   $syncHash.$Control.$Property = $Value 
-			   } 
-		   }, "Normal") 
-		} 
-		
-		function Copy-File {
+function Copy-File {
 			param( [string]$from, [string]$to)
 			$ffile = [io.file]::OpenRead($from)
 			$tofile = [io.file]::OpenWrite($to)
@@ -127,7 +89,7 @@ function doConvertESD (
 							} else {
 							[int]$secsleft = 0};
 							if ($pastpct -ne $pctcomp) {
-								Update-Window ConvertProgress Value $pctcomp
+								Write-Host Copying... $pctcomp%
 							}
 							$pastpct = $pctcomp
 					}
@@ -136,19 +98,117 @@ function doConvertESD (
 					$sw.Reset();
 				}
 			finally {
-				Update-Window ConvertProgress Value 100
+				Write-Host Copying... 100%
 				$ffile.Close();
 				$tofile.Close();
 				
 			}
 		}
 
-		function Get-InfosFromESD(
+function decrypt-ESDs (
+	[parameter(Mandatory=$true)]
+	[Boolean] $Backup,
+
+	[ValidateNotNullOrEmpty()]  
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[parameter(Mandatory=$true)]
+	[Array] $ESD,
+	
+	[parameter(Mandatory=$false)]
+	[Array] $RSAKey
+)
+{
+	[Array]$ESDs = @()
+	[Array]$BackedUpESDs = @()
+
+	foreach ($esdfile in $ESD) {
+		& $wimlib info "$($esdfile)" > $null
+		if ($LASTEXITCODE -eq 74) {
+			$tempesd = $esdfile
+			if ($Backup) {
+				$BackedUpESDs += ($esdfile+'.mod')
+				Copy-File $esdfile ($esdfile+'.mod')
+				$tempesd = ($esdfile+'.mod')
+			}
+			$ESDs += $tempesd
+			& ".\bin\esddecrypt.exe" "$($tempesd)" "$($RSAKey)"
+			if ($LASTEXITCODE -ne 0) {
+				if ($Backup) {
+					foreach ($bakesd in $BackedUpESDs) {
+						remove-item $bakesd -force
+					}
+				}
+				return $LASTEXITCODE
+			}
+		} elseif ($LASTEXITCODE -eq 18) {
+			if ($Backup) {
+				foreach ($bakesd in $BackedUpESDs) {
+					remove-item $bakesd -force
+				}
+			}
+			return 18
+		} else {
+			$ESDs += $esdfile
+		}
+	}
+	return $ESDs, $BackedUpESDs
+}
+
+
+
+
+function global:Create-x64x86Media {
+
+	Copy-Item .\Media\x86\boot\ .\Media\ -recurse
+	Copy-Item .\Media\x86\efi\ .\Media\ -recurse
+	Copy-Item .\Media\x86\bootmgr .\Media\
+	Copy-Item .\Media\x86\bootmgr.efi .\Media\
+	Copy-Item .\Media\x86\autorun.inf .\Media\
+	Copy-Item .\Media\x86\setup.exe .\Media\
+	Copy-Item .\Media\x64\efi\boot\bootx64.efi .\Media\efi\boot\
+
+	$x64guid = bcdedit /store .\Media\boot\bcd /v `
+	  | Select-String "path" -Context 2,0 `
+	  | % { $_.Context.PreContext[0] -replace '^identifier +' } `
+	  | ? { $_ -ne "{default}" }
+
+	bcdedit /store .\Media\boot\bcd /set "{default}" description "Windows 10 Setup (64-bit)"
+	bcdedit /store .\Media\boot\bcd /set "{default}" device ramdisk=[boot]\x64\sources\boot.wim,$x64guid
+	bcdedit /store .\Media\boot\bcd /set "{default}" osdevice ramdisk=[boot]\x64\sources\boot.wim,$x64guid
+	bcdedit /store .\Media\boot\bcd /copy "{default}" /d "Windows 10 Setup (32-bit)"
+	$x86guid = bcdedit /store .\Media\boot\bcd /v `
+	  | Select-String "path" -Context 2,0 `
+	  | % { $_.Context.PreContext[0] -replace '^identifier +' } `
+	  | ? { $_ -ne "$x64guid" }
+	bcdedit /store .\Media\boot\bcd /set "$($x86guid)" device ramdisk=[boot]\x86\sources\boot.wim,$x64guid
+	bcdedit /store .\Media\boot\bcd /set "$($x86guid)" osdevice ramdisk=[boot]\x86\sources\boot.wim,$x64guid
+	
+	Remove-item .\Media\boot\bcd.LOG -force
+	Remove-item .\Media\boot\bcd.LOG1 -force
+	Remove-item .\Media\boot\bcd.LOG2 -force
+	
+}
+
+function global:CleanTM (
+	[parameter(Mandatory=$true)]
+	$BackedUpESDs
+) {
+	if (Test-Path '.\Media\') {
+		Remove-Item -recurse .\Media -force
+	}
+	if ($bakesd -ne $null) {
+		foreach ($bakesd in $BackedUpESDs) {
+			remove-item $bakesd -force
+		}
+	}
+}
+
+function global:Get-InfosFromESD (
 			[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
 			[Array] $ESD
 		) {
 			
-			$result = "" | select MajorVersion, MinorVersion, BuildNumber, DeltaVersion, BranchName, CompileDate, Architecture, BuildType, Type, Sku, Editions, Licensing, LanguageCode, VolumeLabel, FileName
+			$result = "" | select MajorVersion, MinorVersion, BuildNumber, DeltaVersion, BranchName, CompileDate, Architecture, BuildType, Type, Sku, Editions, Licensing, LanguageCode, VolumeLabel, FileName, BuildString, ESDs
 			
 			$editions = @()
 			$counter = 0
@@ -441,8 +501,49 @@ function doConvertESD (
 			}
 			$result.FileName = ($filename+'.iso').ToUpper()
 			
+			$result.BuildString = ($result.MajorVersion+'.'+$result.MinorVersion+'.'+$result.BuildNumber+'.'+$result.DeltaVersion+'.'+$result.BranchName+'.'+$result.CompileDate)
+			$result.ESDs = [array]$ESD
+			
 			return $result
+		}
+
+		
+Function global:prepforconvert (
+	[ValidateNotNullOrEmpty()]  
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
+	[Array] $esdfiles,
+	
+	[parameter(Mandatory=$false,HelpMessage="The crypto key that will be used to decrypt the ESD file.")]
+	$CryptoKey
+) {
+
+	Begin { 
+		Function Update-Window { 
+			Param ( 
+				$Control, 
+				$Property, 
+				$Value, 
+				[switch]$AppendContent 
+			) 
+		 
+		   # This is kind of a hack, there may be a better way to do this 
+		   If ($Property -eq "Close") { 
+			  $syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
+			  Return 
+		   } 
+		   
+		   # This updates the control based on the parameters passed to the function 
+		   $syncHash.$Control.Dispatcher.Invoke([action]{ 
+			  # This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
+			   If ($PSBoundParameters['AppendContent']) { 
+				   $syncHash.$Control.AppendText($Value) 
+			   } Else { 
+				   $syncHash.$Control.$Property = $Value 
+			   } 
+		   }, "Normal") 
 		} 
+		
 		[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
 		$syncHash = [hashtable]::Synchronized(@{}) 
 		$newRunspace =[runspacefactory]::CreateRunspace() 
@@ -451,7 +552,7 @@ function doConvertESD (
 		$newRunspace.Open() 
 		$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
 		$psCmd = [PowerShell]::Create().AddScript({    
-			[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
+			[xml]$xaml = Get-Content -Path 'bin\prepconvert.xaml'
 		  
 			$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
 			$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
@@ -460,20 +561,16 @@ function doConvertESD (
 				$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 			}
 			
-			$syncHash.DecryptingESDFile.Source = "$(Get-ScriptDirectory)\emptyness.png"
-			$syncHash.GatheringBuildInformations.Source = "$(Get-ScriptDirectory)\emptyness.png"
-			$syncHash.ExtractingMainSetupFiles.Source = "$(Get-ScriptDirectory)\emptyness.png"
-			$syncHash.ExportingWindowsPreinstallationEnvironement.Source = "$(Get-ScriptDirectory)\emptyness.png"
-			$syncHash.ExportingWindowsInstallation.Source = "$(Get-ScriptDirectory)\emptyness.png"
-			$syncHash.CreatingtheISOFile.Source = "$(Get-ScriptDirectory)\emptyness.png"
+			$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+			$syncHash.MainGrid.Background = $accent
 			
 			$syncHash.Window.Add_Closing({
-				if (!($syncHash.ConvertEnded.Visibility -eq "Visible")) {
+				if (!($syncHash.Ended.Visibility -eq "Visible")) {
 					$_.Cancel = $true
 				}
 			})
 			
-			$syncHash.Window.ShowDialog() | Out-Null 
+			$syncHash.Window.ShowDialog() 
 			$syncHash.Error = $Error
 		}) 
 		$psCmd.Runspace = $newRunspace 
@@ -482,266 +579,981 @@ function doConvertESD (
 		   Start-Sleep -S 1 
 		}
 	} # End Begin Block
-	 
-	 
-	Process { 
-		
+
+	Process {
+
 		Update-Window ESD_ToolKit Icon "$(Get-ScriptDirectory)\icon.ico"
 		
-		$MainESDFile = $ESD[0]
+		if ($CryptoKey -ne $null) {
+			$result = (decrypt-ESDs -Backup $false -ESD $esdfiles -RSAKey $CryptoKey)
+		} else {
+			$result = (decrypt-ESDs -Backup $false -ESD $esdfiles)
+		}
 		
-		$ProcessESD = @()
-		$DeleteESD = @()
+		[array]$esdinfos = @()
+
+		if ($result -is [system.array]) {
+			foreach ($esdfile in $result[0]) {
+				$esdinfos += Get-InfosFromESD -ESD $esdfile
+			}
+		}
+		Update-Window Ended Visibility "Visible"
+		Update-Window Window Close
+		return $result, $esdinfos
+	}
+}
+
+function Convert-ESD (
+	[ValidateNotNullOrEmpty()]  
+    [ValidateScript({(Test-Path $_) -and ((Get-Item $_).Extension -eq ".esd")})] 
+	[parameter(Mandatory=$true,HelpMessage="The complete path to the ESD file to convert.")]
+	[Array] $esdfiles,
+
+	[ValidateNotNullOrEmpty()]  
+	[parameter(Mandatory=$true,HelpMessage="The place where the final ISO file will be stored")]
+	[System.IO.DirectoryInfo] $Destination,
+	
+	[ValidateNotNullOrEmpty()]
+	[parameter(Mandatory=$false,HelpMessage="The crypto key that will be used to decrypt the ESD file.")]
+	$CryptoKey,
+	
+	[parameter(Mandatory=$true,HelpMessage="The type of extension used for the Windows Image (WIM or ESD)")]
+	[wim.extensiontype] $extensiontype
+)
+{
+
+	$Results = prepforconvert -ESDFiles $esdfiles -CryptoKey $CryptoKey
+	$result = $Results[0]
+	[array]$esdinfos = $Results[1]
+	
+	if ($result -is [System.Array]) {
+	
+	} elseif ($result -eq 18) {
+		#NotOriginal
+		CleanTM($result[1])
+		return
+	} else {
+		#Damaged
+		CleanTM($result[1])
+		return
+	}
+
+	$items = @{}
+	$archs = @()
+	foreach ($architecture in $esdinfos.Architecture) {
+		$items[$architecture] = @{}
+		$items[$architecture]["SetupESDs"] = @()
+		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) { 
+			$items[$architecture]["SetupESDs"] += $esd | ? { -not (($items.$architecture.SetupESDs | ? {$_.LanguageCode -eq $esd.LanguageCode}).BuildString -contains $esd.BuildString) }
+		}
+		$items[$architecture]["WinREESDs"] = @()
+		foreach ($esd in ($esdinfos | ? {$_.Architecture -eq $architecture})) { 
+			$items[$architecture]["WinREESDs"] += $esd | ? { -not (($items.$architecture.WinREESDs | ? {$_.LanguageCode -eq $esd.LanguageCode}).BuildString -contains $esd.BuildString) }
+		}
+		$items[$architecture]["InstallESDs"] = @()
+		$items[$architecture]["InstallESDs"] += ($esdinfos | ? {$_.Architecture -eq $architecture})
 		
-		Update-Window DecryptingESDFile Source "$(Get-ScriptDirectory)\arrow.png"
+		$archs += $architecture | ? { -not ($archs -contains $architecture) }
+	}
+
+	if ($items.Count -gt 1) {
+	
+		function SelectESD($Global:var) {
+			
+			function LoadXamlFile( $path )
+			{
+				[xml]$xmlWPF = Get-Content -Path $path
+				$xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
+				$vars = @{}
+				$xmlWPF.SelectNodes("//*[@Name]") | %{
+					$vars[($_.Name)] = $xamGUI.FindName($_.Name)
+				}
+				$vars["Window"] = $xamGUI
+				return $vars
+			}
+
+			$Global:LastPage = @()
+
+			function SetPage($MainWindow, $NewPage) {
+				[array]$Global:LastPage += $MainWindow.Window.Content.Name
+				$MainWindow.Window.Content = $NewPage.Window
+				
+				$Global:CurrentPage = $NewPage
+				
+				$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+				$Global:CurrentPage.MainGrid.Background = $accent
+				
+				$MainWindow.Window.Add_Closing({
+					if (!($Global:CurrentPage.Ended.Visibility -eq "Visible")) {
+						$_.Cancel = $true
+					}
+				})
+				
+				$NewPage.Window.add_Loaded({
+				
+					Switch ($MainWindow.Window.Content.Name) {
+						"dropdown" {
+							foreach ($item in $Global:var[0]) {
+								$displayitem = [string]($item.BuildString+' - '+$item.Architecture+$item.BuildType+' - '+$item.LanguageCode)
+								$Global:CurrentPage.dropdown.items.Add($displayitem)
+								$Global:CurrentPage.dropdown2.items.Add($displayitem)
+							}
+							$Global:CurrentPage.dropdown.SelectedIndex = 0
+							$Global:CurrentPage.dropdown2.SelectedIndex = 0
+							foreach ($item in $Global:var[1]) {
+								$displayitem = [string]($item.BuildString+' - '+$item.Architecture+$item.BuildType+' - '+$item.LanguageCode)
+								$Global:CurrentPage.dropdown3.items.Add($displayitem)
+								$Global:CurrentPage.dropdown4.items.Add($displayitem)
+							}
+							$Global:CurrentPage.dropdown3.SelectedIndex = 0
+							$Global:CurrentPage.dropdown4.SelectedIndex = 0
+						}
+					}
+				})
+				
+				$NewPage.Button.add_Click({
+					Switch ($MainWindow.Window.Content.Name) {
+						"dropdown" {
+							$Global:CurrentPage.Ended.Visibility = "Visible"
+							$MainWindow.Window.Close()
+							$Global:WinPEESD_x86 = $Global:var[0][$Global:CurrentPage.dropdown.SelectedIndex]
+							$Global:WinREESD_x86 = $Global:var[0][$Global:CurrentPage.dropdown2.SelectedIndex]
+							$Global:WinPEESD_x64 = $Global:var[1][$Global:CurrentPage.dropdown3.SelectedIndex]
+							$Global:WinREESD_x64 = $Global:var[1][$Global:CurrentPage.dropdown4.SelectedIndex]
+						}
+					}
+				})
+				
+				$NewPage.Button2.add_Click({
+					if ($lastpage -ne $null) {
+						if ($lastpage -is [system.array]) {
+							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
+							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
+						} else {
+							$Page = LoadXamlFile ('bin\'+$lastpage+".xaml")
+							$Global:LastPage = @()
+						}
+						SetPage $MainWindow $Page
+						if ($lastpage -is [system.array]) {
+							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
+						} else {
+							$Global:LastPage = @()
+						}
+					}
+				})
+			}
+
+			$MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
+
+			$dropdown = LoadXamlFile 'bin\dropdown.xaml'
+
+			SetPage $MainWindow $dropdown
+			
+			$MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
+
+			$MainWindow.Window.ShowDialog()
+			
+			return $Global:WinPEESD_x86, $Global:WinREESD_x86, $Global:WinPEESD_x64, $Global:WinREESD_x64
+		}
 		
-		foreach ($esdfile in $ESD) {
-			& $wimlib info "$($esdfile)" > $null
-			if (!$?) {
-				$ProcessESD += $esdfile+".mod"
-				$DeleteESD += $esdfile+".mod"
-				$TempESD = $esdfile + ".mod"
-				Output ([out.level] 'Info') 'Copying ESD File...'
+		#2 archs
+		foreach ($architecture in $archs) {
+			if ($architecture -eq 'amd64') {
+				$global:builds_x64 = @()
+			
+				if ($items.$architecture.SetupESDs -is [system.array]) {
+					#more than 1 choice for setup
+					foreach ($item in $items.$architecture.SetupESDs) {
+						[array]$global:builds_x64 += $item
+					}
+				} else {
+					$item = $items.$architecture.SetupESDs
+					[array]$global:builds_x64 += $item
+				}
+			} else {
+				$global:builds_x86 = @()
+			
+				if ($items.$architecture.SetupESDs -is [system.array]) {
+					#more than 1 choice for setup
+					foreach ($item in $items.$architecture.SetupESDs) {
+						[array]$global:builds_x86 += $item
+					}
+				} else {
+					$item = $items.$architecture.SetupESDs
+					[array]$global:builds_x86 += $item
+				}
+			}
+			
+		}
+		
+		$Results = SelectESD($global:builds_x86, $global:builds_x64)
+		
+		$items["x86"]["WinREESD"] = @()
+		$items["x86"]["WinREESD"] = $Results[1]
+		$items["x86"]["SetupESD"] = $Results[2]
+		$items["amd64"]["WinREESD"] = @()
+		$items["amd64"]["WinREESD"] = $Results[3]
+		$items["amd64"]["SetupESD"] = $Results[4]
+		
+		$items.x86.WinREESD.ESDs[0]
+		$items.x86.SetupESD.ESDs[0]
+		$items.amd64.WinREESD.ESDs[0]
+		$items.amd64.SetupESD.ESDs[0]
+		
+		function Create-ISO (
+			$archs,
+			$items,
+			$clean,
+			$extensiontype
+		) {
+			Begin {
+			
+			
+				Function Update-Window { 
+					Param ( 
+						$Control, 
+						$Property, 
+						$Value, 
+						[switch]$AppendContent 
+					) 
+				 
+				   # This is kind of a hack, there may be a better way to do this 
+				   If ($Property -eq "Close") { 
+					  $syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
+					  Return 
+				   } 
+				   
+				   # This updates the control based on the parameters passed to the function 
+				   $syncHash.$Control.Dispatcher.Invoke([action]{ 
+					  # This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
+					   If ($PSBoundParameters['AppendContent']) { 
+						   $syncHash.$Control.AppendText($Value) 
+					   } Else { 
+						   $syncHash.$Control.$Property = $Value 
+					   } 
+				   }, "Normal") 
+				} 
 				
-				Update-Window ConvertProgress Value 0
-				Update-Window ConvertProgress Visibility "Visible"
+				function Export-InstallWIM (
+					[parameter(Mandatory=$true)]
+					[ValidateScript({(Test-Path $_)})] 
+					[Array] $ESD,
+					
+					[parameter(Mandatory=$true)]
+					[Int] $Index,
+
+					[parameter(Mandatory=$true)]
+					[ValidateScript({(Test-Path $_\)})] 
+					[String] $Output,
+					
+					[parameter(Mandatory=$true)]
+					[String] $ExtensionType
+				) {
+
+					$operationname = $null
+					$sw = [System.Diagnostics.Stopwatch]::StartNew();
+					if ($extensiontype -eq 'ESD') {
+					
+						$indexcount = 1
+						if (Test-Path $Output\sources\install.esd) {
+							$header = @{}
+							$OutputVariable = ( & $wimlib info "$($Output)\sources\install.esd" --header)
+							ForEach ($Item in $OutputVariable) {
+								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+								if (($CurrentItem[1] -replace ' ', '') -ne '') {
+									$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+								}
+							}
+							$indexcount = $header.ImageCount + 1
+						}
+						
+						& $wimlib export "$($esdfile)" $Index $Output\sources\install.esd --compress=LZMS --solid | ForEach-Object -Process {
+							if ($operationname -eq $null) {
+								$operationname = $_
+							}
+							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							if ($progress -match "[0-9]") {
+								$total = $_.split(' ')[0]
+								$totalsize = $_.split(' ')[3]
+								[long]$pctcomp = ([long]($total/$totalsize* 100));
+								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+								if ($pctcomp -ne 0) {
+									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+								} else {
+									[long]$secsleft = 0
+								}
+								Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
+								Update-Window ConvertProgress Value $progress
+							}
+							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+								cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
+							}
+						}
+						
+					} else {
+					
+						$indexcount = 1
+						if (Test-Path $Output\sources\install.wim) {
+							$header = @{}
+							$OutputVariable = ( & $wimlib info "$($Output)\sources\install.wim" --header)
+							ForEach ($Item in $OutputVariable) {
+								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+								if (($CurrentItem[1] -replace ' ', '') -ne '') {
+									$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+								}
+							}
+							$indexcount = $header.ImageCount + 1
+						}
+						
+						& $wimlib export "$($esdfile)" $Index $Output\sources\install.wim --compress=maximum | ForEach-Object -Process {
+							if ($operationname -eq $null) {
+								$operationname = $_
+							}
+							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							if ($progress -match "[0-9]") {
+								$total = $_.split(' ')[0]
+								$totalsize = $_.split(' ')[3]
+								[long]$pctcomp = ([long]($total/$totalsize* 100));
+								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+								if ($pctcomp -ne 0) {
+									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+								} else {
+									[long]$secsleft = 0
+								}
+								Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
+								Update-Window ConvertProgress Value $progress
+							}
+							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+								cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
+							}
+						}
+					}
+				}
+
+			
+				function Create-SetupMedia (
+					[parameter(Mandatory=$true)]
+					[ValidateScript({(Test-Path $_)})] 
+					[String] $SetupESD,
+					
+					[parameter(Mandatory=$true)]
+					[ValidateScript({(Test-Path $_)})] 
+					[String] $WinREESD,
+					
+					[parameter(Mandatory=$true)]
+					[ValidateScript({(Test-Path $_\)})] 
+					[String] $Output
+				) {
+					if (Test-Path $Output\sources\boot.wim) {
+						return 1
+					}
+					Update-Window ConvertProgress Value 0
+					Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\arrow.png"
+					Update-Window ConvertProgress Visibility "Collapsed"
+					Update-Window ConvertProgressMarquee Visibility "Visible"
+					
+					& $wimlib apply "$($SetupESD)" 1 $Output
+					Remove-Item $Output\MediaMeta.xml
+					
+					Update-Window ConvertProgress Value 0
+					Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\check.png"
+					Update-Window ExportingWindowsRecoveryEnvironement Source "$(Get-ScriptDirectory)\arrow.png"
+					Update-Window ConvertProgressMarquee Visibility "Collapsed"
+					Update-Window ConvertProgress Visibility "Visible"
+					
+					$sw = [System.Diagnostics.Stopwatch]::StartNew();
+					$operationname = $null
+					& $wimlib export "$($WinREESD)" 2 $Output\sources\boot.wim --compress=maximum | ForEach-Object -Process {
+						if ($operationname -eq $null) {
+							$operationname = $_
+						}
+						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+						if ($progress -match "[0-9]") {
+							$total = $_.split(' ')[0]
+							$totalsize = $_.split(' ')[3]
+							[long]$pctcomp = ([long]($total/$totalsize* 100));
+							[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+							if ($pctcomp -ne 0) {
+								[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+							} else {
+								[long]$secsleft = 0
+							}
+							Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
+							Update-Window ConvertProgress Value $progress
+						}
+					}
+					$sw.Stop();
+					$sw.Reset();
+					
+					Update-Window ConvertProgress Value 0
+					Update-Window ExportingWindowsRecoveryEnvironement Source "$(Get-ScriptDirectory)\check.png"
+					Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\arrow.png"
+					
+					$sw = [System.Diagnostics.Stopwatch]::StartNew();
+					$operationname = $null
+					& $wimlib export "$($SetupESD)" 3 $Output\sources\boot.wim --boot | ForEach-Object -Process {
+						if ($operationname -eq $null) {
+							$operationname = $_
+						}
+						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+						if ($progress -match "[0-9]") {
+							$total = $_.split(' ')[0]
+							$totalsize = $_.split(' ')[3]
+							[long]$pctcomp = ([long]($total/$totalsize* 100));
+							[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+							if ($pctcomp -ne 0) {
+								[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+							} else {
+								[long]$secsleft = 0
+							}
+							Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
+							Update-Window ConvertProgress Value $progress
+						}
+					}
+					$sw.Stop();
+					$sw.Reset();
+					Update-Window ConvertProgress Value 0
+					Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\check.png"
+				}
+
+			
+				[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
+				$syncHash = [hashtable]::Synchronized(@{}) 
+				$newRunspace =[runspacefactory]::CreateRunspace() 
+				$newRunspace.ApartmentState = "STA" 
+				$newRunspace.ThreadOptions = "ReuseThread"           
+				$newRunspace.Open() 
+				$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
+				$psCmd = [PowerShell]::Create().AddScript({    
+					[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
+				  
+					$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
+					$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
+					
+					$xaml.SelectNodes("//*[@Name]") | %{
+						$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
+					}
+					
+					$syncHash.ExportingWindowsRecoveryEnvironement.Source = "$(Get-ScriptDirectory)\emptyness.png"
+					$syncHash.ExtractingMainSetupFiles.Source = "$(Get-ScriptDirectory)\emptyness.png"
+					$syncHash.ExportingWindowsPreinstallationEnvironement.Source = "$(Get-ScriptDirectory)\emptyness.png"
+					$syncHash.ExportingWindowsInstallation.Source = "$(Get-ScriptDirectory)\emptyness.png"
+					$syncHash.CreatingtheISOFile.Source = "$(Get-ScriptDirectory)\emptyness.png"
+					
+					$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+					$syncHash.MainGrid.Background = $accent
+					
+					$syncHash.Window.Add_Closing({
+						if (!($syncHash.Ended.Visibility -eq "Visible")) {
+							$_.Cancel = $true
+						}
+					})
+					
+					$syncHash.Window.ShowDialog() | Out-Null 
+					$syncHash.Error = $Error
+				}) 
+				$psCmd.Runspace = $newRunspace 
+				$data = $psCmd.BeginInvoke() 
+				While (!($syncHash.Window.IsInitialized)) { 
+				   Start-Sleep -S 1 
+				}
+			} # End Begin Block
+		
+			Process {
 				
-				Copy-File $esdfile $TempESD
+				Update-Window ESD_ToolKit Icon "$(Get-ScriptDirectory)\icon.ico"
 				
+				mkdir .\Media\
+			
+				foreach ($architecture in $archs) {
+					if ($architecture -eq 'amd64') {
+						$arch = "x64"
+					} else {
+						$arch = "x86"
+					}
+					Write-Host WinREESD: $items.$architecture.WinREESD.ESDs[0]
+					Write-Host SetupESD: $items.$architecture.SetupESD.ESDs[0]
+
+					mkdir .\Media\$arch\
+					
+					Create-SetupMedia -SetupESD $items.$architecture.SetupESD.ESDs[0] -WinREESD $items.$architecture.WinREESD.ESDs[0] -Output .\Media\$arch\
+					
+					Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\arrow.png"
+					
+					foreach ($esd in $items.$architecture.InstallESDs) {
+						$esdfile = $esd.ESDs[0]
+						Write-Host $esdfile
+						$header = @{}
+						$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
+						ForEach ($Item in $OutputVariable) {
+							$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+							$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+							if (($CurrentItem[1] -replace ' ', '') -ne '') {
+								$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+							}
+						}
+						for ($i=4; $i -le $header.ImageCount; $i++) {
+							Write-Host Index: $i
+							Update-Window ConvertProgress 0
+							Export-InstallWIM -ESD $esdfile -Index $i -Output .\Media\$arch\ -ExtensionType $extensiontype
+						}
+					}
+				}
+				
+				Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\check.png"
+				Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\arrow.png"
 				Update-Window ConvertProgress Visibility "Collapsed"
 				Update-Window ConvertProgressMarquee Visibility "Visible"
 				
-				Output ([out.level] 'Info') 'Decrypting ESD File...'
-				& ".\bin\esddecrypt.exe" "$($TempESD)" "$($CryptoKey)"
-				if ($LASTEXITCODE -ne 0) {
-					Write-Host 'Error! ' $LASTEXITCODE
-					foreach ($esdfile in $DeleteESD) {
-						Remove-Item $esdfile
+				Create-x64x86Media
+				
+				
+				Write-Host 'Gathering Timestamp information from the Setup Media...'
+				$timestamp = (Get-ChildItem .\Media\setup.exe | % {[System.TimeZoneInfo]::ConvertTimeToUtc($_.creationtime).ToString("MM/dd/yyyy,HH:mm:ss")})
+				Write-Host 'Generating ISO...'
+
+				$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
+				& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-lESD-ISO" ".\Media" """$($Destination)\Windows.iso"""
+				
+				Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
+				Update-Window Ended Visibility "Visible"
+				
+				CleanTM($clean)
+				Update-Window Window Close
+			}
+		}
+		
+		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype
+		
+	} else {
+	
+		function SelectSingleESD($Global:var) {
+			
+			function LoadXamlFile( $path )
+			{
+				[xml]$xmlWPF = Get-Content -Path $path
+				$xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
+				$vars = @{}
+				$xmlWPF.SelectNodes("//*[@Name]") | %{
+					$vars[($_.Name)] = $xamGUI.FindName($_.Name)
+				}
+				$vars["Window"] = $xamGUI
+				return $vars
+			}
+
+			$Global:LastPage = @()
+
+			function SetPage($MainWindow, $NewPage) {
+				[array]$Global:LastPage += $MainWindow.Window.Content.Name
+				$MainWindow.Window.Content = $NewPage.Window
+				
+				$Global:CurrentPage = $NewPage
+				
+				$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+				$Global:CurrentPage.MainGrid.Background = $accent
+				
+				$MainWindow.Window.Add_Closing({
+					if (!($Global:CurrentPage.Ended.Visibility -eq "Visible")) {
+						$_.Cancel = $true
 					}
-					return
+				})
+				
+				$NewPage.Window.add_Loaded({
+				
+					Switch ($MainWindow.Window.Content.Name) {
+						"dropdown" {
+							foreach ($item in $Global:var) {
+								$displayitem = [string]($item.BuildString+' - '+$item.Architecture+$item.BuildType+' - '+$item.LanguageCode)
+								$Global:CurrentPage.dropdown.items.Add($displayitem)
+								$Global:CurrentPage.dropdown2.items.Add($displayitem)
+							}
+							$Global:CurrentPage.dropdown.SelectedIndex = 0
+							$Global:CurrentPage.dropdown2.SelectedIndex = 0
+						}
+					}
+				})
+				
+				$NewPage.Button.add_Click({
+					Switch ($MainWindow.Window.Content.Name) {
+						"dropdown" {
+							$Global:CurrentPage.Ended.Visibility = "Visible"
+							$MainWindow.Window.Close()
+							$Global:WinPEESD = $Global:var[$Global:CurrentPage.dropdown.SelectedIndex]
+							$Global:WinREESD = $Global:var[$Global:CurrentPage.dropdown2.SelectedIndex]
+						}
+					}
+				})
+				
+				$NewPage.Button2.add_Click({
+					if ($lastpage -ne $null) {
+						if ($lastpage -is [system.array]) {
+							$Page = LoadXamlFile ('bin\'+$lastpage[-1]+".xaml")
+							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
+						} else {
+							$Page = LoadXamlFile ('bin\'+$lastpage+".xaml")
+							$Global:LastPage = @()
+						}
+						SetPage $MainWindow $Page
+						if ($lastpage -is [system.array]) {
+							$Global:LastPage = $Global:LastPage | Where-Object { $_ -ne $Global:LastPage[-1] }
+						} else {
+							$Global:LastPage = @()
+						}
+					}
+				})
+			}
+
+			$MainWindow = LoadXamlFile 'bin\MainWindow.xaml'
+			
+			$MainWindow.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
+
+			$dropdown = LoadXamlFile 'bin\dropdown_single.xaml'
+
+			SetPage $MainWindow $dropdown
+
+			$MainWindow.Window.ShowDialog()
+			
+			return $Global:WinPEESD, $Global:WinREESD
+		}
+	
+		#1 arch
+		$global:builds = @()
+		foreach ($architecture in $archs) {
+			if ($items.$architecture.SetupESDs -is [system.array]) {
+				#more than 1 choice for setup
+				foreach ($item in $items.$architecture.SetupESDs) {
+					[array]$global:builds += $item
 				}
 			} else {
-				$ProcessESD += $esdfile
+				$item = $items.$architecture.SetupESDs
+				[array]$global:builds += $item
 			}
-		}
-		Update-Window DecryptingESDFile Source "$(Get-ScriptDirectory)\check.png"
-		
-		Update-Window GatheringBuildInformations Source "$(Get-ScriptDirectory)\arrow.png"
-		
-		Update-Window ConvertProgress Visibility "Collapsed"
-		Update-Window ConvertProgressMarquee Visibility "Visible"
-		
-		Output ([out.level] 'Info') 'Gathering build information...'
-		$ISOInfos = (Get-InfosFromESD $ProcessESD)
-		
-		$ISOInfos
-		
-		Update-Window GatheringBuildInformations Source "$(Get-ScriptDirectory)\check.png"
-		
-		Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\arrow.png"
-		
-		Output ([out.level] 'Info') 'Creating Media Temporary Directory...'
-		New-Item -ItemType Directory '.\Media' | out-null
-		Output ([out.level] 'Info') 'Creating Setup Media Layout...'
-		
-		Update-Window ConvertProgressMarquee Visibility "Collapsed"
-		Update-Window ConvertProgress Value 0
-		Update-Window ConvertProgress Visibility "Visible"
-		$name = $null
-		& $wimlib apply "$($ProcessESD[0])" 1 .\Media\ | ForEach-Object -Process {
-			if ($name -eq $null) {
-				$name = $_
-			}
-			$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-			if ($progress -match "[0-9]") {
-				if ($progress -ne $lastpct) {
-					Update-Window ConvertProgress Value $progress
-				}
-				$lastpct = $progress
-			}
-		}
-		Update-Window ConvertProgressMarquee Visibility "Collapsed"
-		Update-Window ConvertProgress Value 0
-		Update-Window ConvertProgress Visibility "Visible"
-		Output ([out.level] 'Info') 'Deleting MediaMeta.xml file...'
-		Remove-Item .\Media\MediaMeta.xml
-		
-		Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\check.png"
-		
-		Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\arrow.png"
-		
-		Output ([out.level] 'Info') 'Creating bootable setup image...'
-		
-		Update-Window ConvertProgressMarquee Visibility "Collapsed"
-		Update-Window ConvertProgress Value 0
-		Update-Window ConvertProgress Visibility "Visible"
-		$sw = [System.Diagnostics.Stopwatch]::StartNew();
-		$name = $null
-		& $wimlib export "$($ProcessESD[0])" 2 .\Media\sources\boot.wim --compress=maximum | ForEach-Object -Process {
-			if ($name -eq $null) {
-				$name = $_
-			}
-			$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-			if ($progress -match "[0-9]") {
-				$total = $_.split(' ')[0]
-				$totalsize = $_.split(' ')[3]
-				[long]$pctcomp = ([long]($total/$totalsize* 100));
-				[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-				if ($pctcomp -ne 0) {
-					[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-				} else {
-					[long]$secsleft = 0
-				}
-				$progress = [long]$progress / 2
-				if ($progress -ne $lastpct) {
-					Update-Window ConvertProgress Value $progress
-				}
-				$lastpct = $progress
-			}
-		}
-		$sw.Stop();
-		$sw.Reset();
-		
-		$sw = [System.Diagnostics.Stopwatch]::StartNew();
-		$name = $null
-		& $wimlib export "$($ProcessESD[0])" 3 .\Media\sources\boot.wim --boot | ForEach-Object -Process {
-			if ($name -eq $null) {
-				$name = $_
-			}
-			$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-			if ($progress -match "[0-9]") {
-				$total = $_.split(' ')[0]
-				$totalsize = $_.split(' ')[3]
-				[long]$pctcomp = ([long]($total/$totalsize* 100));
-				[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-				if ($pctcomp -ne 0) {
-					[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-				} else {
-					[long]$secsleft = 0
-				}
-				$progress = [long]$progress / 2 + 50
-				if ($progress -ne $lastpct) {
-					Update-Window ConvertProgress Value $progress
-				}
-				$lastpct = $progress
-			}
-		}
-		$sw.Stop();
-		$sw.Reset();
-		
-		Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\check.png"
-		
-		Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\arrow.png"
-		
-		Update-Window ConvertProgressMarquee Visibility "Collapsed"
-		Update-Window ConvertProgress Value 0
-		Update-Window ConvertProgress Visibility "Visible"
-		Output ([out.level] 'Info') 'Creating the Windows image...'
-		$indexcounter = 1
-		$globalprogress = 0
-		foreach ($esdfile in $ProcessESD) {
-			$header = @{}
-			$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
-			ForEach ($Item in $OutputVariable) {
-				$CurrentItem = ($Item -replace '\s+', ' ').split('=')
-				$CurrentItemName = $CurrentItem[0] -replace ' ', ''
-				if (($CurrentItem[1] -replace ' ', '') -ne '') {
-					$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
-				}
-			}
-			$name = $null
-			$sw = [System.Diagnostics.Stopwatch]::StartNew();
-			if ($extensiontype -eq 'ESD') {
-				for ($i=4; $i -le $header.ImageCount; $i++) {
-					& $wimlib export "$($esdfile)" $i .\Media\sources\install.esd --compress=LZMS --solid | ForEach-Object -Process {
-						if ($name -eq $null) {
-							$name = $_
-						}
-						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-						if ($progress -match "[0-9]") {
-							$total = $_.split(' ')[0]
-							$totalsize = $_.split(' ')[3]
-							[long]$pctcomp = ([long]($total/$totalsize* 100));
-							[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-							if ($pctcomp -ne 0) {
-								[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-							} else {
-								[long]$secsleft = 0
+			
+			$Results = SelectSingleESD($global:builds)
+			
+			$SetupESD = $Results[1]
+			$WinREESD = $Results[2]
+			
+			Write-Host SetupESD: $SetupESD.ESDs
+			Write-Host WinREESD: $WinREESD.ESDs
+			
+			function Convert-ISO (
+				$SetupESD,
+				$WinREESD,
+				$clean,
+				$extensiontype
+			){
+			
+				Begin {
+			
+					Function Update-Window { 
+						Param ( 
+							$Control, 
+							$Property, 
+							$Value, 
+							[switch]$AppendContent 
+						) 
+					 
+					   # This is kind of a hack, there may be a better way to do this 
+					   If ($Property -eq "Close") { 
+						  $syncHash.Window.Dispatcher.invoke([action]{$syncHash.Window.Close()},"Normal") 
+						  Return 
+					   } 
+					   
+					   # This updates the control based on the parameters passed to the function 
+					   $syncHash.$Control.Dispatcher.Invoke([action]{ 
+						  # This bit is only really meaningful for the TextBox control, which might be useful for logging progress steps 
+						   If ($PSBoundParameters['AppendContent']) { 
+							   $syncHash.$Control.AppendText($Value) 
+						   } Else { 
+							   $syncHash.$Control.$Property = $Value 
+						   } 
+					   }, "Normal") 
+					} 
+				
+					function Export-InstallWIM (
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_)})] 
+						[Array] $ESD,
+						
+						[parameter(Mandatory=$true)]
+						[Int] $Index,
+
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_\)})] 
+						[String] $Output,
+						
+						[parameter(Mandatory=$true)]
+						[String] $ExtensionType
+					) {
+
+						$operationname = $null
+						$sw = [System.Diagnostics.Stopwatch]::StartNew();
+						if ($extensiontype -eq 'ESD') {
+						
+							$indexcount = 1
+							if (Test-Path $Output\sources\install.esd) {
+								$header = @{}
+								$OutputVariable = ( & $wimlib info "$($Output)\sources\install.esd" --header)
+								ForEach ($Item in $OutputVariable) {
+									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+									if (($CurrentItem[1] -replace ' ', '') -ne '') {
+										$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+									}
+								}
+								$indexcount = $header.ImageCount + 1
 							}
-							$progress = [long]$progress / $ProcessESD.Count + $globalprogress
-							if ($progress -ne $lastpct) {
+							
+							& $wimlib export "$($esdfile)" $Index $Output\sources\install.esd --compress=LZMS --solid | ForEach-Object -Process {
+								if ($operationname -eq $null) {
+									$operationname = $_
+								}
+								$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								if ($progress -match "[0-9]") {
+									$total = $_.split(' ')[0]
+									$totalsize = $_.split(' ')[3]
+									[long]$pctcomp = ([long]($total/$totalsize* 100));
+									[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+									if ($pctcomp -ne 0) {
+										[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+									} else {
+										[long]$secsleft = 0
+									}
+									Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
+									Update-Window ConvertProgress Value $progress
+								}
+								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+									cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
+								}
+							}
+							
+						} else {
+						
+							$indexcount = 1
+							if (Test-Path $Output\sources\install.wim) {
+								$header = @{}
+								$OutputVariable = ( & $wimlib info "$($Output)\sources\install.wim" --header)
+								ForEach ($Item in $OutputVariable) {
+									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+									if (($CurrentItem[1] -replace ' ', '') -ne '') {
+										$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+									}
+								}
+								$indexcount = $header.ImageCount + 1
+							}
+							
+							& $wimlib export "$($esdfile)" $Index $Output\sources\install.wim --compress=maximum | ForEach-Object -Process {
+								if ($operationname -eq $null) {
+									$operationname = $_
+								}
+								$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								if ($progress -match "[0-9]") {
+									$total = $_.split(' ')[0]
+									$totalsize = $_.split(' ')[3]
+									[long]$pctcomp = ([long]($total/$totalsize* 100));
+									[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+									if ($pctcomp -ne 0) {
+										[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+									} else {
+										[long]$secsleft = 0
+									}
+									Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
+									Update-Window ConvertProgress Value $progress
+								}
+								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+									cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
+								}
+							}
+						}
+					}
+
+				
+					function Create-SetupMedia (
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_)})] 
+						[String] $SetupESD,
+						
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_)})] 
+						[String] $WinREESD,
+						
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_\)})] 
+						[String] $Output
+					) {
+						if (Test-Path $Output\sources\boot.wim) {
+							return 1
+						}
+						Update-Window ConvertProgress Value 0
+						Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\arrow.png"
+						Update-Window ConvertProgress Visibility "Collapsed"
+						Update-Window ConvertProgressMarquee Visibility "Visible"
+						
+						& $wimlib apply "$($SetupESD)" 1 $Output
+						Remove-Item $Output\MediaMeta.xml
+						
+						Update-Window ConvertProgress Value 0
+						Update-Window ExtractingMainSetupFiles Source "$(Get-ScriptDirectory)\check.png"
+						Update-Window ExportingWindowsRecoveryEnvironement Source "$(Get-ScriptDirectory)\arrow.png"
+						Update-Window ConvertProgressMarquee Visibility "Collapsed"
+						Update-Window ConvertProgress Visibility "Visible"
+						
+						$sw = [System.Diagnostics.Stopwatch]::StartNew();
+						$operationname = $null
+						& $wimlib export "$($WinREESD)" 2 $Output\sources\boot.wim --compress=maximum | ForEach-Object -Process {
+							if ($operationname -eq $null) {
+								$operationname = $_
+							}
+							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							if ($progress -match "[0-9]") {
+								$total = $_.split(' ')[0]
+								$totalsize = $_.split(' ')[3]
+								[long]$pctcomp = ([long]($total/$totalsize* 100));
+								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+								if ($pctcomp -ne 0) {
+									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+								} else {
+									[long]$secsleft = 0
+								}
+								Write-host Creating Windows Recovery environement... $progress% - $operationname - Time remaining: $secsleft - $_
 								Update-Window ConvertProgress Value $progress
 							}
-							$lastpct = $progress
 						}
-					}
-					$indexcounter++
-					if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
-						cmd /c ($wimlib + ' update ".\Media\sources\install.esd" $indexcounter <wim-update.txt')
-						Write-Host ''
-					}
-				}
-				$globalprogress = $globalprogress + (100 / $ProcessESD.Count)
-			} else {
-				$name = $null
-				for ($i=4; $i -le $header.ImageCount; $i++) {
-					& $wimlib export "$($esdfile)" $i .\Media\sources\install.wim --compress=maximum | ForEach-Object -Process {
-						if ($name -eq $null) {
-							$name = $_
-						}
-						$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-						if ($progress -match "[0-9]") {
-							$total = $_.split(' ')[0]
-							$totalsize = $_.split(' ')[3]
-							[long]$pctcomp = ([long]($total/$totalsize* 100));
-							[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-							if ($pctcomp -ne 0) {
-								[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-							} else {
-								[long]$secsleft = 0
+						$sw.Stop();
+						$sw.Reset();
+						
+						Update-Window ConvertProgress Value 0
+						Update-Window ExportingWindowsRecoveryEnvironement Source "$(Get-ScriptDirectory)\check.png"
+						Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\arrow.png"
+						
+						$sw = [System.Diagnostics.Stopwatch]::StartNew();
+						$operationname = $null
+						& $wimlib export "$($SetupESD)" 3 $Output\sources\boot.wim --boot | ForEach-Object -Process {
+							if ($operationname -eq $null) {
+								$operationname = $_
 							}
-							if ($progress -ne $lastpct) {
+							$progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+							if ($progress -match "[0-9]") {
+								$total = $_.split(' ')[0]
+								$totalsize = $_.split(' ')[3]
+								[long]$pctcomp = ([long]($total/$totalsize* 100));
+								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+								if ($pctcomp -ne 0) {
+									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+								} else {
+									[long]$secsleft = 0
+								}
+								Write-host Creating Windows PE Setup... $progress% - $operationname - Time remaining: $secsleft - $_
 								Update-Window ConvertProgress Value $progress
 							}
-							$lastpct = $progress
+						}
+						$sw.Stop();
+						$sw.Reset();
+						Update-Window ConvertProgress Value 0
+						Update-Window ExportingWindowsPreinstallationEnvironement Source "$(Get-ScriptDirectory)\check.png"
+					}
+					
+					[void][System.Reflection.Assembly]::LoadWithPartialName('presentationframework') 
+					$syncHash = [hashtable]::Synchronized(@{}) 
+					$newRunspace =[runspacefactory]::CreateRunspace() 
+					$newRunspace.ApartmentState = "STA" 
+					$newRunspace.ThreadOptions = "ReuseThread"           
+					$newRunspace.Open() 
+					$newRunspace.SessionStateProxy.SetVariable("syncHash",$syncHash)           
+					$psCmd = [PowerShell]::Create().AddScript({    
+						[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
+					  
+						$reader=(New-Object System.Xml.XmlNodeReader $xaml) 
+						$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader ) 
+						
+						$xaml.SelectNodes("//*[@Name]") | %{
+							$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
+						}
+						
+						$syncHash.ExportingWindowsRecoveryEnvironement.Source = "$(Get-ScriptDirectory)\emptyness.png"
+						$syncHash.ExtractingMainSetupFiles.Source = "$(Get-ScriptDirectory)\emptyness.png"
+						$syncHash.ExportingWindowsPreinstallationEnvironement.Source = "$(Get-ScriptDirectory)\emptyness.png"
+						$syncHash.ExportingWindowsInstallation.Source = "$(Get-ScriptDirectory)\emptyness.png"
+						$syncHash.CreatingtheISOFile.Source = "$(Get-ScriptDirectory)\emptyness.png"
+						
+						$syncHash.ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
+						
+						$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+						$syncHash.MainGrid.Background = $accent
+						
+						$syncHash.Window.Add_Closing({
+							if (!($syncHash.Ended.Visibility -eq "Visible")) {
+								$_.Cancel = $true
+							}
+						})
+						
+						$syncHash.Window.ShowDialog() | Out-Null 
+						$syncHash.Error = $Error
+					}) 
+					$psCmd.Runspace = $newRunspace 
+					$data = $psCmd.BeginInvoke() 
+					While (!($syncHash.Window.IsInitialized)) { 
+					   Start-Sleep -S 1 
+					}
+					
+				}
+				
+				Process {
+					
+					Update-Window ESD_ToolKit Icon "$(Get-ScriptDirectory)\icon.ico"
+				
+					mkdir .\Media\
+					
+					Create-SetupMedia -SetupESD $SetupESD.ESDs[0] -WinREESD $WinREESD.ESDs[0] -Output .\Media\
+					
+					Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\arrow.png"
+					
+					foreach ($esd in $items.$architecture.InstallESDs) {
+						$esdfile = $esd.ESDs[0]
+						Write-Host $esdfile
+						$header = @{}
+						$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
+						ForEach ($Item in $OutputVariable) {
+							$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+							$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+							if (($CurrentItem[1] -replace ' ', '') -ne '') {
+								$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+							}
+						}
+						for ($i=4; $i -le $header.ImageCount; $i++) {
+							Write-Host Index: $i
+							Export-InstallWIM -ESD $esdfile -Index $i -Output .\Media\ -ExtensionType $extensiontype
 						}
 					}
-					$indexcounter++
-					if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
-						cmd /c ($wimlib + ' update ".\Media\sources\install.wim" $indexcounter <wim-update.txt')
-						Write-Host ''
-					}
+					
+					Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\check.png"
+					Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\arrow.png"
+					Update-Window ConvertProgress Visibility "Collapsed"
+					Update-Window ConvertProgressMarquee Visibility "Visible"
+					
+					Write-Host 'Gathering Timestamp information from the Setup Media...'
+					$timestamp = (Get-ChildItem .\Media\setup.exe | % {[System.TimeZoneInfo]::ConvertTimeToUtc($_.creationtime).ToString("MM/dd/yyyy,HH:mm:ss")})
+					Write-Host 'Generating ISO...'
+				
+					$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
+					& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-lESD-ISO" ".\Media" """$($Destination)\Windows.iso"""
+					
+					Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
+					Update-Window Ended Visibility "Visible"
+					
+					CleanTM($clean)
+					Update-Window Window Close
 				}
-				$globalprogress = $globalprogress + (100 / $ProcessESD.Count)
 			}
-			$sw.Stop();
-			$sw.Reset();
+			Convert-ISO -SetupESD $SetupESD -WinREESD $WinREESD -Clean $result[1] -extensiontype $extensiontype
 		}
-		Update-Window ExportingWindowsInstallation Source "$(Get-ScriptDirectory)\check.png"
-		
-		Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\arrow.png"
-		
-		Update-Window ConvertProgress Visibility "Collapsed"
-		Update-Window ConvertProgressMarquee Visibility "Visible"
-		Output ([out.level] 'Info') 'Gathering Timestamp information from the Setup Media...'
-		$timestamp = (Get-ChildItem .\Media\sources\setup.exe | % {[System.TimeZoneInfo]::ConvertTimeToUtc($_.creationtime).ToString("MM/dd/yyyy,HH:mm:ss")})
-		Output ([out.level] 'Info') 'Generating ISO...'
-		
-		$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
-		& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($ISOInfos.VolumeLabel)" ".\Media" """$($Destination)\$($ISOInfos.FileName)"""
-		
-		Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
-		Update-Window ConvertEnded Visibility "Visible"
-		
-		Write-Host ''
-		Output ([out.level] 'Info') 'Removing Temporary Directories and Files...'
-		Remove-Item -recurse .\Media
-		foreach ($esdfile in $DeleteESD) {
-			Remove-Item $esdfile
-		}
-		Update-Window Window Close
 	}
 }
+
 
 function LoadXamlFile( $path )
 {
@@ -763,10 +1575,14 @@ function SetPage($MainWindow, $NewPage) {
 	
 	$Global:CurrentPage = $NewPage
 	
+	$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+	$Global:CurrentPage.MainGrid.Background = $accent
+	
 	$NewPage.Window.add_Loaded({
 		Switch ($MainWindow.Window.Content.Name) {
 			"Welcome" {
 				$Global:CurrentPage.Button2.isEnabled = ""
+				$Global:CurrentPage.Download.isEnabled = ""
 			}
 			"ImageFormat" {
 				if ($Global:VarImageFormat -eq "WIM") {
@@ -804,11 +1620,29 @@ function SetPage($MainWindow, $NewPage) {
 				}
 			}
 			"SelectESD" {
-				foreach ($item in (get-item *.esd)) {
-					$Global:CurrentPage.ESDList.items.Add([pscustomobject]@{'File'=$item.Name; 'Path'=$item.FullName}) | out-null
+				$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+				$Global:CurrentPage.MainGrid.Background = $accent
+
+				foreach ($item in ($Global:VarSelectedFile)) {
+					$fileitem = Get-Item $item
+					$Global:CurrentPage.ESDList.items.Add([pscustomobject]@{'File'=$fileitem.Name; 'Path'=$fileitem.FullName}) | out-null
 				}
-				$Global:CurrentPage.ESDList.items.Add([pscustomobject]@{'File'="Select another esd file"}) | out-null
-				$Global:CurrentPage.ESDList.SelectedIndex = 0
+				
+				[System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
+				
+				$Global:CurrentPage.Browse.add_Click({
+					$OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+					$OpenFileDialog.filter = "ESD file (*.esd)| *.esd"
+					$OpenFileDialog.ShowDialog() | Out-Null
+					$SelectedFile = Get-Item $OpenFileDialog.filename
+					if ($SelectedFile -ne $null) {
+						$Global:CurrentPage.ESDList.items.Add([pscustomobject]@{'File'=$SelectedFile.Name; 'Path'=$SelectedFile.FullName}) | out-null
+					}
+				})
+				
+				$Global:CurrentPage.Remove.add_Click({
+					$Global:CurrentPage.ESDList.Items.Remove($Global:CurrentPage.ESDList.SelectedItem)
+				})
 			}
 			"Recap" {
 			
@@ -916,16 +1750,11 @@ function SetPage($MainWindow, $NewPage) {
 				SetPage $MainWindow $AskDestinationPath
 			}
 			"SelectESD" {
-				$Global:VarSelectedFile = $Global:CurrentPage.ESDList.SelectedItems.Path
-				if ($Global:CurrentPage.ESDList.SelectedItems.Path -eq $null) {
-					[System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms") | Out-Null
-					$OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-					$OpenFileDialog.filter = "ESD file (*.esd)| *.esd"
-					$OpenFileDialog.ShowDialog() | Out-Null
-					$Global:VarSelectedFile = $OpenFileDialog.filename
-				}
+				$Global:VarSelectedFile = $Global:CurrentPage.ESDList.Items.Path
 				if ($Global:VarSelectedFile -eq "") {
-					$MainWindow.Window.Close()
+					return
+				}
+				if ($Global:VarSelectedFile -eq $null) {
 					return
 				}
 				$Recap = LoadXamlFile 'bin\Recap.xaml'
@@ -934,12 +1763,13 @@ function SetPage($MainWindow, $NewPage) {
 			"Recap" {
 				$MainWindow.Window.Close()
  				if ($VarRSAKey -eq "") {
-					doConvertESD -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
+					Convert-ESD -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
 				} if ($VarRSAKey -eq $null) {
-					doConvertESD -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
+					Convert-ESD -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
 				} else {
-					doConvertESD -CryptoKey $VarRSAKey -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
+					Convert-ESD -CryptoKey $VarRSAKey -extensiontype $VarImageFormat -ESD $VarSelectedFile -Destination $VarPath
 				}
+				
 				
 				[xml]$Global:xmlWPF = Get-Content -Path 'bin\ConvertEnd.xaml'
 				
@@ -948,6 +1778,9 @@ function SetPage($MainWindow, $NewPage) {
 				$xmlWPF.SelectNodes("//*[@Name]") | %{
 					Set-Variable -Name ($_.Name) -Value $xamGUI.FindName($_.Name) -Scope Global
 				}
+				
+				$accent = '#'+('{0:x}' -f (Get-ItemProperty -Path HKCU:SOFTWARE\Microsoft\Windows\DWM -Name "ColorizationColor").ColorizationColor).toUpper()
+				$MainGrid.Background = $accent
 				
 				$ESD_ToolKit.Icon = "$(Get-ScriptDirectory)\icon.ico"
 				

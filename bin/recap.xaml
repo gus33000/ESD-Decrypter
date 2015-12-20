@@ -2,14 +2,15 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Name="Recap">
-	<Grid>
+	<Grid Name="MainGrid">
 		<Grid.Background>
-            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
-                <GradientStop Color="#FF00A6DD"/>
-				<GradientStop Color="#FF00A6DD" Offset="1.5"/>
-                <GradientStop Color="#FF0081AC" Offset="0.100"/>
-            </LinearGradientBrush>
+			<SolidColorBrush Color="#FF00A6DD" Opacity="0.5"/>
         </Grid.Background>
+		<Rectangle Height="562" Width="716" Stroke="White" Opacity="0.20">
+        <Rectangle.Fill>
+          <VisualBrush Viewport="0,0,47.5,30" ViewportUnits="Absolute" TileMode="Tile"> <VisualBrush.Visual> <StackPanel Background="Transparent"> <TextBlock FontSize="10pt" Margin="1" Foreground="White" Text="BETA"/> </StackPanel> </VisualBrush.Visual> <VisualBrush.Transform> <RotateTransform Angle="-45" CenterX="0.5" CenterY="0.5" /> </VisualBrush.Transform> </VisualBrush>
+        </Rectangle.Fill>
+      </Rectangle>
 		<StackPanel Orientation="Vertical">
 			<StackPanel Margin="0,0,0,5">
 				<Label Margin="0,30,0,0" Width="630" Foreground="White" FontFamily="Segoe UI Light" FontStretch="SemiCondensed" FontWeight="Thin" TextOptions.TextFormattingMode="Display">
@@ -17,8 +18,8 @@
 						Here's what we collected
 					</TextBlock>
 				</Label>
-				<TextBlock Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="LightGray" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">
-					Nope, it's not telemetry data :P
+				<TextBlock Width="620" TextWrapping="WrapWithOverflow" FontSize="12" Foreground="White" Opacity="0.75" FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display">
+					Don't worry, it's not telemetry data.
 				</TextBlock>
 			</StackPanel>
 			<StackPanel Margin="35,15,0,0">
