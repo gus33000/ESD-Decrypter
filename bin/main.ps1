@@ -154,7 +154,6 @@ function decrypt-ESDs (
 	return $ESDs, $BackedUpESDs
 }
 
-
 function global:Create-x64x86Media {
 	Copy-Item .\Media\x86\boot\ .\Media\ -recurse
 	Copy-Item .\Media\x86\efi\ .\Media\ -recurse
