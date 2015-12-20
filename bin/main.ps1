@@ -81,7 +81,7 @@ function Copy-File {
 			$total += $count
 			[int]$pctcomp = ([int]($total/$ffile.Length* 100))
 			[int]$secselapsed = [int]($sw.elapsedmilliseconds.ToString())/1000
-			if ( $secselapsed -ne 0 ) {
+			if ($secselapsed -ne 0) {
 				[single]$xferrate = (($total/$secselapsed)/1mb)
 			} else {
 				[single]$xferrate = 0.0
@@ -210,7 +210,7 @@ function global:Get-InfosFromESD (
 	for ($i=1; $i -le 3; $i++){
 		$counter++
 		$WIMInfo[$counter] = @{}
-		$OutputVariable = ( & $wimlib info "$($ESD[0])" $i)
+		$OutputVariable = (& $wimlib info "$($ESD[0])" $i)
 		ForEach ($Item in $OutputVariable) {
 			$CurrentItem = ($Item -replace '\s+', ' ').split(':')
 			$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -221,7 +221,7 @@ function global:Get-InfosFromESD (
 	}	
 	foreach ($esdfile in $ESD) {
 		$header = @{}
-		$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
+		$OutputVariable = (& $wimlib info "$($esdfile)" --header)
 		ForEach ($Item in $OutputVariable) {
 			$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 			$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -232,7 +232,7 @@ function global:Get-InfosFromESD (
 		for ($i=4; $i -le $header.ImageCount; $i++){
 			$counter++
 			$WIMInfo[$counter] = @{}
-			$OutputVariable = ( & $wimlib info "$($esdfile)" $i)
+			$OutputVariable = (& $wimlib info "$($esdfile)" $i)
 			ForEach ($Item in $OutputVariable) {
 				$CurrentItem = ($Item -replace '\s+', ' ').split(':')
 				$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -290,11 +290,11 @@ function global:Get-InfosFromESD (
 	Write-Host 'Checking registry for a more accurate build string...'
 	& $wimlib extract $ESD[0] 4 windows\system32\config\ --no-acls | out-null
 	& 'reg' load HKLM\RenameISOs .\config\SOFTWARE | out-null
-	$output = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
+	$output = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
 	if (($output[2] -ne $null) -and (-not ($output[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
 		$result.CompileDate = $output[2].Split(' ')[-1].Split('.')[-1]
 		$result.BranchName = $output[2].Split(' ')[-1].Split('.')[-2]
-		$output_ = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
+		$output_ = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
 		if (($output_[2] -ne $null) -and (-not ($output_[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
 			if ($output_[2].Split(' ')[-1] -like '*.*.*.*.*') {
 				$result.BuildNumber = $output_[2].Split(' ')[-1].Split('.')[0]
@@ -511,7 +511,7 @@ Function global:prepforconvert (
 		$psCmd = [PowerShell]::Create().AddScript({
 			[xml]$xaml = Get-Content -Path 'bin\prepconvert.xaml'
 			$reader=(New-Object System.Xml.XmlNodeReader $xaml)
-			$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
+			$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 			$xaml.SelectNodes("//*[@Name]") | %{
 				$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 			}
@@ -597,7 +597,7 @@ function Convert-ESD (
 	}
 	if ($items.Count -gt 1) {
 		function SelectESD($Global:var) {
-			function LoadXamlFile( $path ) {
+			function LoadXamlFile($path) {
 				[xml]$xmlWPF = Get-Content -Path $path
 				$xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
 				$vars = @{}
@@ -763,7 +763,7 @@ function Convert-ESD (
 						$indexcount = 1
 						if (Test-Path $Output\sources\install.esd) {
 							$header = @{}
-							$OutputVariable = ( & $wimlib info "$($Output)\sources\install.esd" --header)
+							$OutputVariable = (& $wimlib info "$($Output)\sources\install.esd" --header)
 							ForEach ($Item in $OutputVariable) {
 								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -799,7 +799,7 @@ function Convert-ESD (
 						$indexcount = 1
 						if (Test-Path $Output\sources\install.wim) {
 							$header = @{}
-							$OutputVariable = ( & $wimlib info "$($Output)\sources\install.wim" --header)
+							$OutputVariable = (& $wimlib info "$($Output)\sources\install.wim" --header)
 							ForEach ($Item in $OutputVariable) {
 								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -921,7 +921,7 @@ function Convert-ESD (
 				$psCmd = [PowerShell]::Create().AddScript({
 					[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
 					$reader=(New-Object System.Xml.XmlNodeReader $xaml)
-					$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
+					$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 					$xaml.SelectNodes("//*[@Name]") | %{
 						$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 					}
@@ -964,7 +964,7 @@ function Convert-ESD (
 						$esdfile = $esd.ESDs[0]
 						Write-Host $esdfile
 						$header = @{}
-						$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
+						$OutputVariable = (& $wimlib info "$($esdfile)" --header)
 						ForEach ($Item in $OutputVariable) {
 							$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 							$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -998,7 +998,7 @@ function Convert-ESD (
 		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype
 	} else {
 		function SelectSingleESD($Global:var) {
-			function LoadXamlFile( $path ) {
+			function LoadXamlFile($path) {
 				[xml]$xmlWPF = Get-Content -Path $path
 				$xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
 				$vars = @{}
@@ -1135,7 +1135,7 @@ function Convert-ESD (
 							$indexcount = 1
 							if (Test-Path $Output\sources\install.esd) {
 								$header = @{}
-								$OutputVariable = ( & $wimlib info "$($Output)\sources\install.esd" --header)
+								$OutputVariable = (& $wimlib info "$($Output)\sources\install.esd" --header)
 								ForEach ($Item in $OutputVariable) {
 									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -1171,7 +1171,7 @@ function Convert-ESD (
 							$indexcount = 1
 							if (Test-Path $Output\sources\install.wim) {
 								$header = @{}
-								$OutputVariable = ( & $wimlib info "$($Output)\sources\install.wim" --header)
+								$OutputVariable = (& $wimlib info "$($Output)\sources\install.wim" --header)
 								ForEach ($Item in $OutputVariable) {
 									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -1292,7 +1292,7 @@ function Convert-ESD (
 					$psCmd = [PowerShell]::Create().AddScript({
 						[xml]$xaml = Get-Content -Path 'bin\converting.xaml'
 						$reader=(New-Object System.Xml.XmlNodeReader $xaml)
-						$syncHash.Window=[Windows.Markup.XamlReader]::Load( $reader )
+						$syncHash.Window=[Windows.Markup.XamlReader]::Load($reader)
 						$xaml.SelectNodes("//*[@Name]") | %{
 							$syncHash.$($_.Name) = $syncHash.Window.FindName($_.Name)
 						}
@@ -1327,7 +1327,7 @@ function Convert-ESD (
 						$esdfile = $esd.ESDs[0]
 						Write-Host $esdfile
 						$header = @{}
-						$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
+						$OutputVariable = (& $wimlib info "$($esdfile)" --header)
 						ForEach ($Item in $OutputVariable) {
 							$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 							$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -1360,7 +1360,7 @@ function Convert-ESD (
 	}
 }
 
-function LoadXamlFile( $path )
+function LoadXamlFile($path)
 {
 	[xml]$xmlWPF = Get-Content -Path $path
     $xamGUI = [Windows.Markup.XamlReader]::Load((new-object System.Xml.XmlNodeReader $xmlWPF))
