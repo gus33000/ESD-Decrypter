@@ -585,6 +585,28 @@ function Get-InfosFromESD(
 	}
 		
 	$result.Licensing = 'Retail'
+	
+	& $wimlib extract $ESD[0] 1 sources\ei.cfg --nullglob --no-acls | out-null
+	if (Test-Path ".\ei.cfg") {
+		$content = @()
+		Get-Content (".\ei.cfg") | foreach-object -process { 
+			$content += $_ 
+		}
+		$counter = 0
+		foreach ($item in $content) {
+			$counter++
+			if ($item -eq '[EditionID]') {
+				$result.Sku = $content[$counter]
+			}
+		}
+		$counter = 0
+		foreach ($item in $content) {
+			$counter++
+			if ($item -eq '[Channel]') {
+				$result.Licensing = $content[$counter]
+			}
+		}
+	}
 		
 	if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
 		$result.Sku = $null
