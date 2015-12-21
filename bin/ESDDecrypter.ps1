@@ -606,6 +606,7 @@ function Get-InfosFromESD(
 				$result.Licensing = $content[$counter]
 			}
 		}
+		Remove-Item ".\ei.cfg" -force
 	}
 		
 	if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
