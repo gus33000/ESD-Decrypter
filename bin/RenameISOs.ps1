@@ -473,6 +473,91 @@ function ISO-identify($isofile) {
 		
 		$result.Editions = $result.Sku
 		
+		(& 'bin\7z' l -i!*\ntldr $letter\sources\install.wim) | % { if ($_ -like '*ntldr*') { $wimindex = $_.split(' \')[-2] } }
+		
+		# Gathering Compiledate and the buildbranch from the ntoskrnl executable.
+		Write-Host 'Checking critical system files for a build string and build type information...'
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntkrnlmp.exe" | out-null
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntoskrnl.exe" | out-null
+		if (Test-Path .\$wimindex\windows\system32\ntkrnlmp.exe) {
+			$result.CompileDate = (Get-item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
+			$result.BranchName = (Get-item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+			if ((Get-item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.IsDebug) {
+				$result.BuildType = 'chk'
+			} else {
+				$result.BuildType = 'fre'
+			}
+			$ProductVersion = (Get-item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.ProductVersion
+			remove-item .\$wimindex\windows\system32\ntkrnlmp.exe -force
+		} elseif (Test-Path .\$wimindex\windows\system32\ntoskrnl.exe) {
+			$result.CompileDate = (Get-item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
+			$result.BranchName = (Get-item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+			if ((Get-item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.IsDebug) {
+				$result.BuildType = 'chk'
+			} else {
+				$result.BuildType = 'fre'
+			}
+			$ProductVersion = (Get-item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.ProductVersion
+			remove-item .\$wimindex\windows\system32\ntoskrnl.exe -force
+		}
+		
+		$result.MajorVersion = $ProductVersion.split('.')[0]
+		$result.MinorVersion = $ProductVersion.split('.')[1]
+		$result.BuildNumber = $ProductVersion.split('.')[2]
+		$result.DeltaVersion = $ProductVersion.split('.')[3]
+		
+		# Gathering Compiledate and the buildbranch from the build registry.
+		Write-Host 'Checking registry for a more accurate build string...'
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\config\" | out-null
+		& 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SOFTWARE | out-null
+		$output = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
+		if (($output -ne $null) -and ($output[2] -ne $null) -and (-not ($output[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
+			$result.CompileDate = $output[2].Split(' ')[-1].Split('.')[-1]
+			$result.BranchName = $output[2].Split(' ')[-1].Split('.')[-2]
+			$output_ = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
+			if (($output_[2] -ne $null) -and (-not ($output_[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
+				if ($output_[2].Split(' ')[-1] -like '*.*.*.*.*') {
+					$result.BuildNumber = $output_[2].Split(' ')[-1].Split('.')[0]
+					$result.DeltaVersion = $output_[2].Split(' ')[-1].Split('.')[1]
+				}
+			}
+		} else {
+			Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
+		}
+		& 'reg' unload HKLM\RenameISOs | out-null
+		
+		& 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SYSTEM | out-null
+		$ProductSuite = ( Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductSuite).ProductSuite
+		$ProductType = ( Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductType).ProductType
+		Write-Host $ProductSuite
+		Write-Host $ProductType
+		
+		if ($ProductType -eq 'ServerNT') {
+			$result.Type = 'server'
+		} else {
+			$result.Type = 'client'
+		}
+		
+		if ($ProductSuite -is [System.Array]) {
+			if ($ProductSuite[0] -ne '') {
+				$result.Sku = $ProductSuite[0]
+			} else {
+				$result.Sku = 'Professional'
+			}
+		} elseif ($ProductSuite -ne '') {
+			$result.Sku = $ProductSuite
+		} else {
+			$result.Sku = 'Professional'
+		}
+		$result.Editions = $result.Sku
+		
+		& 'reg' unload HKLM\RenameISOs | out-null
+		
+		remove-item .\$wimindex\windows\system32\config\ -recurse -force
+		
+		remove-item .\$wimindex\ -recurse -force
+		
+		
 		Write-Host "Dismounting $($isofile)..."
 		get-DiskImage -ImagePath $isofile.fullname | Dismount-DiskImage
 		

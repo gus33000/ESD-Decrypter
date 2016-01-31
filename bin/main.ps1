@@ -201,26 +201,31 @@ function global:Get-InfosFromESD (
 	[Array] $ESD
 )
 {
-	$result = "" | select MajorVersion, MinorVersion, BuildNumber, DeltaVersion, BranchName, CompileDate, Architecture, BuildType, Type, Sku, Editions, Licensing, LanguageCode, VolumeLabel, FileName, BuildString, ESDs
-	$editions = @()
-	$counter = 0
-	$WIMInfo = New-Object System.Collections.ArrayList
-	$WIMInfo=@{}
-	for ($i=1; $i -le 3; $i++){
-		$counter++
-		$WIMInfo[$counter] = @{}
-		$OutputVariable = (& $wimlib info "$($ESD[0])" $i)
-		ForEach ($Item in $OutputVariable) {
-			$CurrentItem = ($Item -replace '\s+', ' ').split(':')
-			$CurrentItemName = $CurrentItem[0] -replace ' ', ''
-			if (($CurrentItem[1] -replace ' ', '') -ne '') {
-				$WIMInfo[$counter][$CurrentItemName] = $CurrentItem[1].Substring(1)
+	$esdinformations = @()
+	foreach ($esdfile in $ESD) {
+		$result = "" | select MajorVersion, MinorVersion, BuildNumber, DeltaVersion, BranchName, CompileDate, Architecture, BuildType, Type, Sku, Editions, Licensing, LanguageCode, VolumeLabel, BuildString, ESDs
+		
+		$editions = @()
+		$counter = 0
+		
+		$WIMInfo = New-Object System.Collections.ArrayList
+		$WIMInfo=@{}
+		
+		for ($i=1; $i -le 3; $i++){
+			$counter++
+			$WIMInfo[$counter] = @{}
+			$OutputVariable = ( & $wimlib info "$($esdfile)" $i)
+			ForEach ($Item in $OutputVariable) {
+				$CurrentItem = ($Item -replace '\s+', ' ').split(':')
+				$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+				if (($CurrentItem[1] -replace ' ', '') -ne '') {
+					$WIMInfo[$counter][$CurrentItemName] = $CurrentItem[1].Substring(1)
+				}
 			}
 		}
-	}	
-	foreach ($esdfile in $ESD) {
+		
 		$header = @{}
-		$OutputVariable = (& $wimlib info "$($esdfile)" --header)
+		$OutputVariable = ( & $wimlib info "$($esdfile)" --header)
 		ForEach ($Item in $OutputVariable) {
 			$CurrentItem = ($Item -replace '\s+', ' ').split('=')
 			$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -228,10 +233,11 @@ function global:Get-InfosFromESD (
 				$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
 			}
 		}
+			
 		for ($i=4; $i -le $header.ImageCount; $i++){
 			$counter++
 			$WIMInfo[$counter] = @{}
-			$OutputVariable = (& $wimlib info "$($esdfile)" $i)
+			$OutputVariable = ( & $wimlib info "$($esdfile)" $i)
 			ForEach ($Item in $OutputVariable) {
 				$CurrentItem = ($Item -replace '\s+', ' ').split(':')
 				$CurrentItemName = $CurrentItem[0] -replace ' ', ''
@@ -244,226 +250,382 @@ function global:Get-InfosFromESD (
 				}
 			}
 		}
+		
+		$WIMInfo["header"] = @{}
+		$WIMInfo["header"]["ImageCount"] = ($counter.toString())
+		
+		$result.Editions = $editions
+			
+		# Converting standards architecture names to friendly ones, if we didn't found any, we put the standard one instead * cough * arm / ia64,
+		# Yes, IA64 is still a thing for server these days...
+		if ($WIMInfo[4].Architecture -eq 'x86') {
+			$result.Architecture = 'x86'
+		} elseif ($WIMInfo[4].Architecture -eq 'x86_64') {
+			$result.Architecture = 'amd64'
+		} else {
+			$result.Architecture = $WIMInfo[4].Architecture
+		}
+			
+		# Gathering Compiledate and the buildbranch from the ntoskrnl executable.
+		Write-Host 'Checking critical system files for a build string and build type information...'
+		& $wimlib extract $esdfile 4 windows\system32\ntkrnlmp.exe windows\system32\ntoskrnl.exe --nullglob --no-acls | out-null
+		if (Test-Path .\ntkrnlmp.exe) {
+			$result.CompileDate = (Get-item .\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
+			$result.BranchName = (Get-item .\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+			if ((Get-item .\ntkrnlmp.exe).VersionInfo.IsDebug) {
+				$result.BuildType = 'chk'
+			} else {
+				$result.BuildType = 'fre'
+			}
+			$ProductVersion = (Get-item .\ntkrnlmp.exe).VersionInfo.ProductVersion
+			remove-item .\ntkrnlmp.exe -force
+		} elseif (Test-Path .\ntoskrnl.exe) {
+			$result.CompileDate = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
+			$result.BranchName = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+			if ((Get-item .\ntoskrnl.exe).VersionInfo.IsDebug) {
+				$result.BuildType = 'chk'
+			} else {
+				$result.BuildType = 'fre'
+			}
+			$ProductVersion = (Get-item .\ntoskrnl.exe).VersionInfo.ProductVersion
+			remove-item .\ntoskrnl.exe -force
+		}
+			
+		$result.MajorVersion = $ProductVersion.split('.')[0]
+		$result.MinorVersion = $ProductVersion.split('.')[1]
+		$result.BuildNumber = $ProductVersion.split('.')[2]
+		$result.DeltaVersion = $ProductVersion.split('.')[3]
+			
+		# Gathering Compiledate and the buildbranch from the build registry.
+		Write-Host 'Checking registry for a more accurate build string...'
+		& $wimlib extract $esdfile 4 windows\system32\config\ --no-acls | out-null
+		& 'reg' load HKLM\RenameISOs .\config\SOFTWARE | out-null
+		$output = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
+		if (($output[2] -ne $null) -and (-not ($output[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
+			$result.CompileDate = $output[2].Split(' ')[-1].Split('.')[-1]
+			$result.BranchName = $output[2].Split(' ')[-1].Split('.')[-2]
+			$output_ = ( & 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
+			if (($output_[2] -ne $null) -and (-not ($output_[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
+				if ($output_[2].Split(' ')[-1] -like '*.*.*.*.*') {
+					$result.BuildNumber = $output_[2].Split(' ')[-1].Split('.')[0]
+					$result.DeltaVersion = $output_[2].Split(' ')[-1].Split('.')[1]
+				}
+			}
+		} else {
+			Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
+		}
+		& 'reg' unload HKLM\RenameISOs | out-null
+		remove-item .\config\ -recurse -force
+			
+		# Defining if server or client thanks to Microsoft including 'server' in the server sku names
+		if (($WIMInfo.header.ImageCount -gt 4) -and (($WIMInfo[4].EditionID) -eq $null)) {
+			$result.Type = 'client'
+			$result.Sku = $null
+		} elseif (($WIMInfo[4].EditionID) -eq $null) {
+			$result.Type = 'client'
+			$result.Sku = 'unstaged'
+		} elseif (($WIMInfo[4].EditionID.toLower()) -like '*server*') {
+			$result.Type = 'server'
+			$result.Sku = $WIMInfo[4].EditionID.toLower() -replace 'server', ''
+		} else {
+			$result.Type = 'client'
+			$result.Sku = $WIMInfo[4].EditionID.toLower()
+		}
+			
+		$result.Licensing = 'Retail'
+		
+		& $wimlib extract $esdfile 1 sources\ei.cfg --nullglob --no-acls | out-null
+		if (Test-Path ".\ei.cfg") {
+			$content = @()
+			Get-Content (".\ei.cfg") | foreach-object -process { 
+				$content += $_ 
+			}
+			$counter = 0
+			foreach ($item in $content) {
+				$counter++
+				if ($item -eq '[EditionID]') {
+					$result.Sku = $content[$counter]
+				}
+			}
+			$counter = 0
+			foreach ($item in $content) {
+				$counter++
+				if ($item -eq '[Channel]') {
+					$result.Licensing = $content[$counter]
+				}
+			}
+			Remove-Item ".\ei.cfg" -force
+		}
+			
+		if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
+			$result.Sku = $null
+		}
+			
+		& $wimlib extract $esdfile 1 sources\lang.ini --nullglob --no-acls | out-null
+		Get-Content ('lang.ini') | foreach-object -begin {$h=@()} -process { $k = [regex]::split($_,'`r`n'); if(($k[0].CompareTo("") -ne 0)) { $h += $k[0] } }
+		$result.LanguageCode = ($h[((0..($h.Count - 1) | Where { $h[$_] -eq '[Available UI Languages]' }) + 1)]).split('=')[0].Trim()
+		remove-item lang.ini -force
+		
+		$tag = 'ir3'
+		$DVD = 'DV9'
+			
+		if ($WIMInfo[4].Architecture -eq 'x86') {
+			$arch = 'x86'
+		}
+		
+		if ($WIMInfo[4].Architecture -eq 'x86_64') {
+			$arch = 'x64'
+		}
+		
+		if ($WIMInfo[4].ServicePackBuild -eq '17056') {
+			$tag = 'ir4'
+		}
+		if ($WIMInfo[4].ServicePackBuild -eq '17415') {
+			$tag = 'ir5'
+		}
+		if ($WIMInfo[4].ServicePackBuild -gt '17415') {
+			$tag = 'ir6'
+		}
+		
+		if ([int] $WIMInfo[4].Build -gt '9600') {
+			$tag = 'JM1'
+			$DVD = 'DV5'
+		}
+		if ([int] $WIMInfo[4].Build -ge '9896') {
+			$tag = 'J'
+			$DVD = 'DV5'
+		}
+		
+		if ($result.Licensing.toLower() -eq 'volume') {
+			$ltag = 'FREV_'
+		} elseif ($result.Licensing.toLower() -eq 'oem') {
+			$ltag = 'FREO_'
+		} else {
+			$ltag = 'FRE_'
+		}
+				
+		$DVDLabel = ($tag+'_CCSA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()
+		if ($WIMInfo.header.ImageCount -eq 4) {
+			if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ($tag+'_CCRA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreConnected') {$DVDLabel = ($tag+'_CCONA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreConnectedCountrySpecific') {$DVDLabel = ($tag+'_CCCHA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreConnectedN') {$DVDLabel = ($tag+'_CCONNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreConnectedSingleLanguage') {$DVDLabel = ($tag+'_CCSLA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ($tag+'_CCHA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreN') {$DVDLabel = ($tag+'_CCRNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ($tag+'_CSLA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ($tag+'_CPRA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'ProfessionalN') {$DVDLabel = ($tag+'_CPRNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'ProfessionalStudent') {$DVDLabel = ($tag+'_CPRSA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'ProfessionalStudentN') {$DVDLabel = ($tag+'_CPRSNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'ProfessionalWMC') {$DVDLabel = ($tag+'_CPWMCA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'Education') {$DVDLabel = ($tag+'_CEDA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'EducationN') {$DVDLabel = ($tag+'_CEDNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'Enterprise') {$DVDLabel = ($tag+'_CENA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'EnterpriseN') {$DVDLabel = ($tag+'_CENNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'EnterpriseS') {$DVDLabel = ($tag+'_CES_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'EnterpriseSN') {$DVDLabel = ($tag+'_CESN_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+		}
+		
+		$result.VolumeLabel = $DVDLabel
+		$result.BuildString = ($result.MajorVersion+'.'+$result.MinorVersion+'.'+$result.BuildNumber+'.'+$result.DeltaVersion+'.'+$result.BranchName+'.'+$result.CompileDate)
+		$result.ESDs = [array]$esdfile
+		$esdinformations += $result
 	}
-	$WIMInfo["header"] = @{}
-	$WIMInfo["header"]["ImageCount"] = ($counter.toString())
-	$result.Editions = $editions	
-	#Converting standards architecture names to friendly ones, if we didn't found any, we put the standard one instead * cough * arm / ia64,
-	#Yes, IA64 is still a thing for server these days...
-	if ($WIMInfo[4].Architecture -eq 'x86') {
-		$result.Architecture = 'x86'
-	} elseif ($WIMInfo[4].Architecture -eq 'x86_64') {
-		$result.Architecture = 'amd64'
-	} else {
-		$result.Architecture = $WIMInfo[4].Architecture
-	}	
-	#Gathering Compiledate and the buildbranch from the ntoskrnl executable.
-	Write-Host 'Checking critical system files for a build string and build type information...'
-	& $wimlib extract $ESD[0] 4 windows\system32\ntkrnlmp.exe windows\system32\ntoskrnl.exe --nullglob --no-acls | out-null
-	if (Test-Path .\ntkrnlmp.exe) {
-		$result.CompileDate = (Get-item .\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
-		$result.BranchName = (Get-item .\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
-		if ((Get-item .\ntkrnlmp.exe).VersionInfo.IsDebug) {
-			$result.BuildType = 'chk'
-		} else {
-			$result.BuildType = 'fre'
+	$archs = @()
+	($esdinformations | select Architecture).Architecture | % {
+		if (-not ($archs -contains $_.toLower())) {
+			$archs += $_.toLower()
 		}
-		$ProductVersion = (Get-item .\ntkrnlmp.exe).VersionInfo.ProductVersion
-		remove-item .\ntkrnlmp.exe -force
-	} elseif (Test-Path .\ntoskrnl.exe) {
-		$result.CompileDate = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
-		$result.BranchName = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
-		if ((Get-item .\ntoskrnl.exe).VersionInfo.IsDebug) {
-			$result.BuildType = 'chk'
-		} else {
-			$result.BuildType = 'fre'
-		}
-		$ProductVersion = (Get-item .\ntoskrnl.exe).VersionInfo.ProductVersion
-		remove-item .\ntoskrnl.exe -force
-	}	
-	$result.MajorVersion = $ProductVersion.split('.')[0]
-	$result.MinorVersion = $ProductVersion.split('.')[1]
-	$result.BuildNumber = $ProductVersion.split('.')[2]
-	$result.DeltaVersion = $ProductVersion.split('.')[3]	
-	#Gathering Compiledate and the buildbranch from the build registry.
-	Write-Host 'Checking registry for a more accurate build string...'
-	& $wimlib extract $ESD[0] 4 windows\system32\config\ --no-acls | out-null
-	& 'reg' load HKLM\RenameISOs .\config\SOFTWARE | out-null
-	$output = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
-	if (($output[2] -ne $null) -and (-not ($output[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
-		$result.CompileDate = $output[2].Split(' ')[-1].Split('.')[-1]
-		$result.BranchName = $output[2].Split(' ')[-1].Split('.')[-2]
-		$output_ = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
-		if (($output_[2] -ne $null) -and (-not ($output_[2].Split(' ')[-1].Split('.')[-1]) -eq '')) {
-			if ($output_[2].Split(' ')[-1] -like '*.*.*.*.*') {
-				$result.BuildNumber = $output_[2].Split(' ')[-1].Split('.')[0]
-				$result.DeltaVersion = $output_[2].Split(' ')[-1].Split('.')[1]
+	}
+	$filename = $null
+	foreach ($arch in $archs) {
+		$currentesds1 = ($esdinformations | Where-Object { $_.architecture.toLower() -eq $arch })
+		$buildtypes = @()
+		($currentesds1 | select BuildType).BuildType | % {
+			if (-not ($buildtypes -contains $_.toLower())) {
+				$buildtypes += $_.toLower()
 			}
 		}
-	} else {
-		Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
+		foreach ($buildtype in $buildtypes) {
+			$currentesds2 = ($currentesds1 | Where-Object { $_.buildtype.toLower() -eq $buildtype })
+			$builds = @()
+			($currentesds2 | select BuildString).BuildString | % {
+				if (-not ($builds -contains $_.toLower())) {
+					$builds += $_.toLower()
+				}
+			}
+			foreach ($build in $builds) {
+				$currentesds3 = ($currentesds2 | Where-Object {$_.BuildString.toLower() -eq $build })
+				$languages = @()
+				($currentesds3 | select LanguageCode).LanguageCode | % {
+					if (-not ($languages -contains $_.toLower())) {
+						$languages += $_.toLower()
+					}
+				}
+				foreach ($language in $languages) {
+					$currentesds4 = ($currentesds3 | Where-Object {$_.LanguageCode -eq $language })
+					$Edition = $null
+					$Licensing = $null
+					($currentesds4 | select Editions).Editions | % {
+						if ($_ -is [System.Array]) {
+							foreach ($item in $_) {
+								if ($Edition -eq $null) {
+									$Edition_ = $item
+									if ($item -eq 'Core') {$Edition_ = 'CORE'}
+									if ($item -eq 'CoreN') {$Edition_ = 'COREN'}
+									if ($item -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
+									if ($item -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
+									if ($item -eq 'Professional') {$Edition_ = 'PRO'}
+									if ($item -eq 'ProfessionalN') {$Edition_ = 'PRON'}
+									if ($item -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
+									if ($item -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
+									if ($item -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
+									if ($item -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
+									if ($item -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
+									if ($item -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
+									if ($item -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
+									if ($item -eq 'Enterprise') {$Edition_ = 'ENTERPRISE'}
+									$Edition = $Edition_
+								} else {
+									$Edition_ = $item_
+									if ($item -eq 'Core') {$Edition_ = 'CORE'}
+									if ($item -eq 'CoreN') {$Edition_ = 'COREN'}
+									if ($item -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
+									if ($item -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
+									if ($item -eq 'Professional') {$Edition_ = 'PRO'}
+									if ($item -eq 'ProfessionalN') {$Edition_ = 'PRON'}
+									if ($item -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
+									if ($item -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
+									if ($item -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
+									if ($item -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
+									if ($item -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
+									if ($item -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
+									if ($item -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
+									if ($item -eq 'Enterprise') {$Edition_ = 'ENTERPRISE'}
+									$Edition = $Edition+'-'+$Edition_
+								}
+							}
+						} else {
+							if ($Edition -eq $null) {
+								$Edition_ = $_
+								if ($_ -eq 'Core') {$Edition_ = 'CORE'}
+								if ($_ -eq 'CoreN') {$Edition_ = 'COREN'}
+								if ($_ -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
+								if ($_ -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
+								if ($_ -eq 'Professional') {$Edition_ = 'PRO'}
+								if ($_ -eq 'ProfessionalN') {$Edition_ = 'PRON'}
+								if ($_ -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
+								if ($_ -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
+								if ($_ -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
+								if ($_ -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
+								if ($_ -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
+								if ($_ -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
+								if ($_ -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
+								if ($_ -eq 'Enterprise') {$Edition_ = 'ENTERPRISE'}
+								$Edition = $Edition_
+							} else {
+								$Edition_ = $_
+								if ($_ -eq 'Core') {$Edition_ = 'CORE'}
+								if ($_ -eq 'CoreN') {$Edition_ = 'COREN'}
+								if ($_ -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
+								if ($_ -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
+								if ($_ -eq 'Professional') {$Edition_ = 'PRO'}
+								if ($_ -eq 'ProfessionalN') {$Edition_ = 'PRON'}
+								if ($_ -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
+								if ($_ -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
+								if ($_ -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
+								if ($_ -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
+								if ($_ -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
+								if ($_ -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
+								if ($_ -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
+								if ($_ -eq 'Enterprise') {$Edition_ = 'ENTERPRISE'}
+								$Edition = $Edition+'-'+$Edition_
+							}
+						}
+					}
+					($currentesds4 | select Licensing).Licensing | % {
+						if ($Licensing -eq $null) {
+							$Licensing = $_
+						} else {
+							if (-not ($Licensing -contains $_)) {
+								$Licensing = $Licensing+$_
+							}
+						}
+					}
+					$Edition = $Edition.toUpper() -replace 'SERVERHYPER', 'SERVERHYPERCORE' -replace 'SERVER', ''
+					$Licensing = $Licensing.toUpper() -replace 'VOLUME', 'VOL' -replace 'RETAIL', 'RET'
+					if ($Edition -eq 'PRO-CORE') {
+						$Licensing = 'OEMRET'
+					}
+					if ($Edition.toLower() -eq 'unstaged') {
+						$Edition = ''
+					}
+					$arch_ = $arch -replace 'amd64', 'x64'
+					if ($currentesds4 -is [System.Array]) {
+						$FILENAME_ = ($currentesds4[0].BuildNumber+'.'+$currentesds4[0].DeltaVersion+'.'+$currentesds4[0].CompileDate+'.'+$currentesds4[0].BranchName)
+					} else {
+						$FILENAME_ = ($currentesds4.BuildNumber+'.'+$currentesds4.DeltaVersion+'.'+$currentesds4.CompileDate+'.'+$currentesds4.BranchName)
+					}
+					$FILENAME_ = ($FILENAME_+'_CLIENT'+$Edition+'_'+$Licensing+'_'+$arch_+$buildtype+'_'+$language).toUpper()
+					if ($filename -eq $null) {
+						$filename = $FILENAME_
+					} else {
+						$filename = $filename+'-'+$FILENAME_
+					}
+					$parts += 1
+				}
+			}
+		}
 	}
-	& 'reg' unload HKLM\RenameISOs | out-null
-	remove-item .\config\ -recurse -force
-	#Defining if server or client thanks to Microsoft including 'server' in the server sku names
-	if (($WIMInfo.header.ImageCount -gt 4) -and (($WIMInfo[4].EditionID) -eq $null)) {
-		$result.Type = 'client'
-		$result.Sku = $null
-	} elseif (($WIMInfo[4].EditionID) -eq $null) {
-		$result.Type = 'client'
-		$result.Sku = 'unstaged'
-	} elseif (($WIMInfo[4].EditionID.toLower()) -like '*server*') {
-		$result.Type = 'server'
-		$result.Sku = $WIMInfo[4].EditionID.toLower() -replace 'server', ''
-	} else {
-		$result.Type = 'client'
-		$result.Sku = $WIMInfo[4].EditionID.toLower()
-	}		
-	$result.Licensing = 'Retail'		
-	if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
-		$result.Sku = $null
-	}	
-	& $wimlib extract $ESD[0] 1 sources\lang.ini --nullglob --no-acls | out-null
-	Get-Content ('lang.ini') | foreach-object -begin {$h=@()} -process { $k = [regex]::split($_,'`r`n'); if(($k[0].CompareTo("") -ne 0)) { $h += $k[0] } }
-	$result.LanguageCode = ($h[((0..($h.Count - 1) | Where { $h[$_] -eq '[Available UI Languages]' }) + 1)]).split('=')[0].Trim()
-	remove-item lang.ini -force	
+	
 	$tag = 'ir3'
-	$DVD = 'DV9'
-	if ($WIMInfo[4].Architecture -eq 'x86') {
+	$DVD = 'DV9'				
+	if ($esdinformations[0].Architecture -eq 'x86') {
 		$arch = 'x86'
-	}	
-	if ($WIMInfo[4].Architecture -eq 'x86_64') {
+	}			
+	if ($esdinformations[0].Architecture -eq 'x86_64') {
 		$arch = 'x64'
-	}	
-	if ($WIMInfo[4].ServicePackBuild -eq '17056') {
+	}			
+	if ([int] $esdinformations[0].DeltaVersion -eq '17056') {
 		$tag = 'ir4'
 	}
-	if ($WIMInfo[4].ServicePackBuild -eq '17415') {
+	if ([int] $esdinformations[0].DeltaVersion -eq '17415') {
 		$tag = 'ir5'
 	}
-	if ($WIMInfo[4].ServicePackBuild -gt '17415') {
+	if ([int] $esdinformations[0].DeltaVersion -gt '17415') {
 		$tag = 'ir6'
-	}	
-	if ([int] $WIMInfo[4].Build -gt '9600') {
+	}			
+	if ([int] $esdinformations[0].BuildNumber -gt '9600') {
 		$tag = 'JM1'
 		$DVD = 'DV5'
 	}
-	if ([int] $WIMInfo[4].Build -ge '9896') {
+	if ([int] $esdinformations[0].BuildNumber -ge '9896') {
 		$tag = 'J'
 		$DVD = 'DV5'
-	}	
-	$DVDLabel = ($tag+'_CCSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()
-	if ($WIMInfo.header.ImageCount -eq 4) {
-		if ($WIMInfo[4].EditionID -eq 'Core') {$DVDLabel = ($tag+'_CCRA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnected') {$DVDLabel = ($tag+'_CCONA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedCountrySpecific') {$DVDLabel = ($tag+'_CCCHA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedN') {$DVDLabel = ($tag+'_CCONNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreConnectedSingleLanguage') {$DVDLabel = ($tag+'_CCSLA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreCountrySpecific') {$DVDLabel = ($tag+'_CCHA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreN') {$DVDLabel = ($tag+'_CCRNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'CoreSingleLanguage') {$DVDLabel = ($tag+'_CSLA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'Professional') {$DVDLabel = ($tag+'_CPRA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalN') {$DVDLabel = ($tag+'_CPRNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudent') {$DVDLabel = ($tag+'_CPRSA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalStudentN') {$DVDLabel = ($tag+'_CPRSNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'ProfessionalWMC') {$DVDLabel = ($tag+'_CPWMCA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'Education') {$DVDLabel = ($tag+'_CEDA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'EducationN') {$DVDLabel = ($tag+'_CEDNA_'+$arch+'FRE_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'Enterprise') {$DVDLabel = ($tag+'_CENA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'EnterpriseN') {$DVDLabel = ($tag+'_CENNA_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'EnterpriseS') {$DVDLabel = ($tag+'_CES_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-		if ($WIMInfo[4].EditionID -eq 'EnterpriseSN') {$DVDLabel = ($tag+'_CESN_'+$arch+'FREV_'+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
-	}	
-	$result.VolumeLabel = $DVDLabel
-	$Edition = $null
-	$Licensing = $null
-	foreach ($item_ in $result.Editions) {
-		if ($Edition -eq $null) {
-			$Licensing = 'RET'
-			$Edition_ = $item_
-			if ($item_ -eq 'Core') {$Edition_ = 'CORE'}
-			if ($item_ -eq 'CoreN') {$Edition_ = 'COREN'}
-			if ($item_ -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
-			if ($item_ -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
-			if ($item_ -eq 'Professional') {$Edition_ = 'PRO'}
-			if ($item_ -eq 'ProfessionalN') {$Edition_ = 'PRON'}
-			if ($item_ -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
-			if ($item_ -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
-			if ($item_ -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
-			if ($item_ -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
-			if ($item_ -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
-			if ($item_ -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
-			if ($item_ -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
-			if ($item_ -eq 'Enterprise') {
-				$Licensing = 'VOL'
-				$Edition_ = 'ENTERPRISE'
-			}
-			$Edition = $Edition_
-		} else {
-			$Edition_ = $item_
-			if ($item_ -eq 'Core') {$Edition_ = 'CORE'}
-			if ($item_ -eq 'CoreN') {$Edition_ = 'COREN'}
-			if ($item_ -eq 'CoreSingleLanguage') {$Edition_ = 'SINGLELANGUAGE'}
-			if ($item_ -eq 'CoreCountrySpecific') {$Edition_ = 'CHINA'}
-			if ($item_ -eq 'Professional') {$Edition_ = 'PRO'}
-			if ($item_ -eq 'ProfessionalN') {$Edition_ = 'PRON'}
-			if ($item_ -eq 'ProfessionalWMC') {$Edition_ = 'PROWMC'}
-			if ($item_ -eq 'CoreConnected') {$Edition_ = 'CORECONNECTED'}
-			if ($item_ -eq 'CoreConnectedN') {$Edition_ = 'CORECONNECTEDN'}
-			if ($item_ -eq 'CoreConnectedSingleLanguage') {$Edition_ = 'CORECONNECTEDSINGLELANGUAGE'}
-			if ($item_ -eq 'CoreConnectedCountrySpecific') {$Edition_ = 'CORECONNECTEDCHINA'}
-			if ($item_ -eq 'ProfessionalStudent') {$Edition_ = 'PROSTUDENT'}
-			if ($item_ -eq 'ProfessionalStudentN') {$Edition_ = 'PROSTUDENTN'}
-			if ($item_ -eq 'Enterprise') {
-				$Licensing = $Licensing+'VOL'
-				$Edition_ = 'ENTERPRISE'
-			}
-			$Edition = $Edition+'-'+$Edition_
-		}
-	}	
-	if ($result.Type.toLower() -eq 'server') {
-		$Edition = $Edition.toUpper()  -replace 'SERVERHYPER', 'SERVERHYPERCORE' -replace 'SERVER', ''
 	}
-	if ($result.Licensing.toLower() -eq 'volume') {
-		$Licensing = 'VOL'
-	} elseif ($result.Licensing.toLower() -eq 'oem') {
-		$Licensing = 'OEM'
-	} elseif ($Licensing -eq $null) {
-		$Licensing = 'RET'
-	}
-	if ($Edition -contains 'PRO-CORE') {
-		$Licensing = $Licensing -replace 'RET', 'OEMRET'
-	} elseif ($result.Sku -eq $null -and $result.Type.toLower() -eq 'server') {
-		$Edition = ''
-		if ($result.Licensing.toLower() -eq 'retail') {
-			$Licensing = 'OEMRET'
-		}
-		if ($result.Licensing.toLower() -eq 'retail' -and [int]$result.BuildNumber -lt 9900) {
-			$Licensing = 'OEM'
-		}
-	} elseif ($result.Editions.Count -eq 1 -and $result.Type.toLower() -eq 'server') {
-		$Licensing = 'OEM'
-	}
-	if ([int]$result.BuildNumber -lt 8008) {
-		$Edition = $result.Sku
-	}	
-	if ($Edition -eq 'unstaged') {
-		$Edition = ''
-	}	
-	$arch = $result.Architecture -replace 'amd64', 'x64'
-	if ($result.BranchName -eq $null) {
-		$FILENAME = ($result.BuildNumber+'.'+$result.DeltaVersion)
+	if ($esdinformations[0].Licensing.toLower() -eq 'volume') {
+		$ltag = 'FREV_'
+	} elseif ($esdinformations[0].Licensing.toLower() -eq 'oem') {
+		$ltag = 'FREO_'
 	} else {
-		$FILENAME = ($result.BuildNumber+'.'+$result.DeltaVersion+'.'+$result.CompileDate+'.'+$result.BranchName)
-	}	
-	$FILENAME = ($FILENAME+'_'+$result.Type+$Edition+'_'+$Licensing+'_'+$arch+$result.BuildType+'_'+$result.LanguageCode)	
-	if ($addLabel) {
-		$filename = $filename+'-'+$result.VolumeLabel
+		$ltag = 'FRE_'
 	}
-	$result.FileName = ($filename+'.iso').ToUpper()
-	$result.BuildString = ($result.MajorVersion+'.'+$result.MinorVersion+'.'+$result.BuildNumber+'.'+$result.DeltaVersion+'.'+$result.BranchName+'.'+$result.CompileDate)
-	$result.ESDs = [array]$ESD
-	return $result
+	
+	$filename = ($filename+'.ISO').toUpper()
+	
+	if ($esdinformations.count -eq 1) {
+		$DVDLabel = $esdinformations[0].VolumeLabel
+	} elseif ($esdinformations.count -eq 2 -and $esdinformations[0].Editions -eq "Core" -and $esdinformations[1].Editions -eq "Professional" -and $parts -eq 1) {
+		$DVDLabel = ($tag+'_CCSA_'+$arch+$ltag+$esdinformations[0].LanguageCode+'_'+$DVD).ToUpper()
+	} else {
+		$DVDLabel = "ESD-ISO"
+	}
+	
+	Write-Host Filename: $filename
+	Write-Host Volume Label: $DVDLabel
+	
+	return $filename, $DVDLabel, $esdinformations
 }
 	
 Function global:prepforconvert (
@@ -538,13 +700,14 @@ Function global:prepforconvert (
 		}
 		[array]$esdinfos = @()
 		if ($result -is [system.array]) {
-			foreach ($esdfile in $result[0]) {
-				$esdinfos += Get-InfosFromESD -ESD $esdfile
-			}
+			$results = Get-InfosFromESD -ESD $result[0]
+			$esdinfos = $results[2]
+			$volumelabel = $results[1]
+			$filename = $results[0]
 		}
 		Update-Window Ended Visibility "Visible"
 		Update-Window Window Close
-		return $result, $esdinfos
+		return $result, $esdinfos, $filename, $volumelabel
 	}
 }
 
@@ -715,7 +878,9 @@ function Convert-ESD (
 			$archs,
 			$items,
 			$clean,
-			$extensiontype
+			$extensiontype,
+			$isoname,
+			$label
 		)
 		{
 			Begin {
@@ -743,100 +908,103 @@ function Convert-ESD (
 					}, "Normal")
 				}
 				function Export-InstallWIM (
-					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_)})]
-					[Array] $ESD,
-					[parameter(Mandatory=$true)]
-					[Int] $Index,
-					[parameter(Mandatory=$true)]
-					[ValidateScript({(Test-Path $_\)})]
-					[String] $Output,
-					[parameter(Mandatory=$true)]
-					[String] $ExtensionType
-				)
-				{
-					$operationname = $null
-					$sw = [System.Diagnostics.Stopwatch]::StartNew();
-					if ($extensiontype -eq 'ESD') {
-						$indexcount = 1
-						if (Test-Path $Output\sources\install.esd) {
-							$header = @{}
-							$OutputVariable = (& $wimlib info "$($Output)\sources\install.esd" --header)
-							ForEach ($Item in $OutputVariable) {
-								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
-								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
-								if (($CurrentItem[1] -replace ' ', '') -ne '') {
-									$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_)})]
+						[Array] $ESD,
+						[parameter(Mandatory=$true)]
+						[Int] $Index,
+						[parameter(Mandatory=$true)]
+						[ValidateScript({(Test-Path $_\)})]
+						[String] $Output,
+						[parameter(Mandatory=$true)]
+						[String] $ExtensionType
+					)
+					{
+						Write-Host test
+						$operationname = $null
+						$sw = [System.Diagnostics.Stopwatch]::StartNew();
+						Write-Host test
+						if ($extensiontype -eq 'ESD') {
+							Write-Host test 2
+							$indexcount = 1
+							if (Test-Path $Output\sources\install.esd) {
+								$header = @{}
+								$OutputVariable = (& $wimlib info "$($Output)\sources\install.esd" --header)
+								ForEach ($Item in $OutputVariable) {
+									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+									if (($CurrentItem[1] -replace ' ', '') -ne '') {
+										$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+									}
+								}
+								$indexcount = $header.ImageCount + 1
+							}
+							& $wimlib export "$($esdfile)" $Index $Output\sources\install.esd --compress=LZMS --solid | ForEach-Object -Process {
+								if ($operationname -eq $null) {
+									$operationname = $_
+								}
+								$global:lastprogress = $progress
+								$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								if ($progress -match "[0-9]") {
+									$total = $_.split(' ')[0]
+									$totalsize = $_.split(' ')[3]
+									[long]$pctcomp = ([long]($total/$totalsize* 100));
+									[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+									if ($pctcomp -ne 0) {
+										[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+									} else {
+										[long]$secsleft = 0
+									}
+									#Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
+									if ($lastprogress -ne $progress) {
+										Update-Window ConvertProgress Value $progress
+									}
+								}
+								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+									cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
 								}
 							}
-							$indexcount = $header.ImageCount + 1
-						}
-						& $wimlib export "$($esdfile)" $Index $Output\sources\install.esd --compress=LZMS --solid | ForEach-Object -Process {
-							if ($operationname -eq $null) {
-								$operationname = $_
-							}
-							$global:lastprogress = $progress
-							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-							if ($progress -match "[0-9]") {
-								$total = $_.split(' ')[0]
-								$totalsize = $_.split(' ')[3]
-								[long]$pctcomp = ([long]($total/$totalsize* 100));
-								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-								if ($pctcomp -ne 0) {
-									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-								} else {
-									[long]$secsleft = 0
+						} else {
+							$indexcount = 1
+							if (Test-Path $Output\sources\install.wim) {
+								$header = @{}
+								$OutputVariable = (& $wimlib info "$($Output)\sources\install.wim" --header)
+								ForEach ($Item in $OutputVariable) {
+									$CurrentItem = ($Item -replace '\s+', ' ').split('=')
+									$CurrentItemName = $CurrentItem[0] -replace ' ', ''
+									if (($CurrentItem[1] -replace ' ', '') -ne '') {
+										$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+									}
 								}
-								#Write-host Exporting to install.esd... $progress% - $operationname - Time remaining: $secsleft - $_
-								if ($lastprogress -ne $progress) {
-									Update-Window ConvertProgress Value $progress
+								$indexcount = $header.ImageCount + 1
+							}
+							& $wimlib export "$($esdfile)" $Index $Output\sources\install.wim --compress=maximum | ForEach-Object -Process {
+								if ($operationname -eq $null) {
+									$operationname = $_
 								}
-							}
-							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
-								cmd /c ($wimlib + ' update "$($Output)\sources\install.esd" $($indexcount) <bin\wim-update.txt')
-							}
-						}
-					} else {
-						$indexcount = 1
-						if (Test-Path $Output\sources\install.wim) {
-							$header = @{}
-							$OutputVariable = (& $wimlib info "$($Output)\sources\install.wim" --header)
-							ForEach ($Item in $OutputVariable) {
-								$CurrentItem = ($Item -replace '\s+', ' ').split('=')
-								$CurrentItemName = $CurrentItem[0] -replace ' ', ''
-								if (($CurrentItem[1] -replace ' ', '') -ne '') {
-									$header[$CurrentItemName] = $CurrentItem[1].Substring(1)
+								$global:lastprogress = $progress
+								$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
+								if ($progress -match "[0-9]") {
+									$total = $_.split(' ')[0]
+									$totalsize = $_.split(' ')[3]
+									[long]$pctcomp = ([long]($total/$totalsize* 100));
+									[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
+									if ($pctcomp -ne 0) {
+										[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
+									} else {
+										[long]$secsleft = 0
+									}
+									#Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
+									if ($lastprogress -ne $progress) {
+										Update-Window ConvertProgress Value $progress
+									}
 								}
-							}
-							$indexcount = $header.ImageCount + 1
-						}
-						& $wimlib export "$($esdfile)" $Index $Output\sources\install.wim --compress=maximum | ForEach-Object -Process {
-							if ($operationname -eq $null) {
-								$operationname = $_
-							}
-							$global:lastprogress = $progress
-							$global:progress = [regex]::match($_,'\(([^\)]+)\%').Groups[1].Value
-							if ($progress -match "[0-9]") {
-								$total = $_.split(' ')[0]
-								$totalsize = $_.split(' ')[3]
-								[long]$pctcomp = ([long]($total/$totalsize* 100));
-								[long]$secselapsed = [long]($sw.elapsedmilliseconds.ToString())/1000;
-								if ($pctcomp -ne 0) {
-									[long]$secsleft = ((($secselapsed/$pctcomp)* 100)-$secselapsed)
-								} else {
-									[long]$secsleft = 0
+								if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
+									cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
 								}
-								#Write-host Exporting to install.wim... $progress% - $operationname - Time remaining: $secsleft - $_
-								if ($lastprogress -ne $progress) {
-									Update-Window ConvertProgress Value $progress
-								}
-							}
-							if ($WIMInfo.$indexcounter.EditionID -eq 'ProfessionalWMC') {
-								cmd /c ($wimlib + ' update "$($Output)\sources\install.wim" $($indexcount) <bin\wim-update.txt')
 							}
 						}
 					}
-				}
 				function Create-SetupMedia (
 					[parameter(Mandatory=$true)]
 					[ValidateScript({(Test-Path $_)})]
@@ -997,14 +1165,14 @@ function Convert-ESD (
 				$timestamp = (Get-ChildItem .\Media\setup.exe | % {[System.TimeZoneInfo]::ConvertTimeToUtc($_.creationtime).ToString("MM/dd/yyyy,HH:mm:ss")})
 				Write-Host 'Generating ISO...'
 				$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
-				& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-lESD-ISO" ".\Media" """$($Destination)\Windows.iso"""
+				& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($label)" ".\Media" """$($Destination)\$($isoname)"""
 				Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
 				Update-Window Ended Visibility "Visible"
 				CleanTM($clean)
 				Update-Window Window Close
 			}
 		}
-		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype
+		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype -isoname $Results[2] -label $Results[3]
 	} else {
 		function SelectSingleESD($Global:var) {
 			function LoadXamlFile($path) {
@@ -1098,7 +1266,9 @@ function Convert-ESD (
 				$SetupESD,
 				$WinREESD,
 				$clean,
-				$extensiontype
+				$extensiontype,
+				$isoname,
+				$label
 			)
 			{
 				Begin {
@@ -1369,14 +1539,14 @@ function Convert-ESD (
 					$timestamp = (Get-ChildItem .\Media\setup.exe | % {[System.TimeZoneInfo]::ConvertTimeToUtc($_.creationtime).ToString("MM/dd/yyyy,HH:mm:ss")})
 					Write-Host 'Generating ISO...'
 					$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
-					& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-lESD-ISO" ".\Media" """$($Destination)\Windows.iso"""
+					& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($label)" ".\Media" """$($Destination)\$($isoname)"""
 					Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
 					Update-Window Ended Visibility "Visible"
 					CleanTM($clean)
 					Update-Window Window Close
 				}
 			}
-			Convert-ISO -SetupESD $SetupESD -WinREESD $WinREESD -Clean $result[1] -extensiontype $extensiontype
+			Convert-ISO -SetupESD $SetupESD -WinREESD $WinREESD -Clean $result[1] -extensiontype $extensiontype -isoname $Results[2] -label $Results[3]
 		}
 	}
 }
