@@ -727,6 +727,8 @@ function Convert-ESD (
 )
 {
 	$Results = prepforconvert -ESDFiles $esdfiles -CryptoKey $CryptoKey
+    $filename = $Results[2]
+    $label = $Results[3]
 	$result = $Results[0]
 	[array]$esdinfos = $Results[1]
 	if ($result -is [System.Array]) {
@@ -1166,13 +1168,13 @@ function Convert-ESD (
 				Write-Host 'Generating ISO...'
 				$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
 				& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($label)" ".\Media" """$($Destination)\$($isoname)"""
-				Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
+                Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
 				Update-Window Ended Visibility "Visible"
 				CleanTM($clean)
 				Update-Window Window Close
 			}
 		}
-		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype -isoname $Results[2] -label $Results[3]
+		Create-ISO -Items $items -Archs $archs -Clean $result[1] -extensiontype $extensiontype -isoname $filename -label $label
 	} else {
 		function SelectSingleESD($Global:var) {
 			function LoadXamlFile($path) {
@@ -1540,13 +1542,13 @@ function Convert-ESD (
 					Write-Host 'Generating ISO...'
 					$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
 					& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($label)" ".\Media" """$($Destination)\$($isoname)"""
-					Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
+                    Update-Window CreatingtheISOFile Source "$(Get-ScriptDirectory)\check.png"
 					Update-Window Ended Visibility "Visible"
 					CleanTM($clean)
 					Update-Window Window Close
 				}
 			}
-			Convert-ISO -SetupESD $SetupESD -WinREESD $WinREESD -Clean $result[1] -extensiontype $extensiontype -isoname $Results[2] -label $Results[3]
+			Convert-ISO -SetupESD $SetupESD -WinREESD $WinREESD -Clean $result[1] -extensiontype $extensiontype -isoname $filename -label $label
 		}
 	}
 }
