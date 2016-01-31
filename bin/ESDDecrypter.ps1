@@ -530,7 +530,7 @@ function Get-InfosFromESD(
 			$result.BuildType = 'fre'
 		}
 		$ProductVersion = (Get-item .\ntkrnlmp.exe).VersionInfo.ProductVersion
-		Remove-item -force .\ntkrnlmp.exe -force
+		Remove-item -force .\ntkrnlmp.exe
 	} elseif (Test-Path .\ntoskrnl.exe) {
 		$result.CompileDate = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
 		$result.BranchName = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
@@ -540,7 +540,7 @@ function Get-InfosFromESD(
 			$result.BuildType = 'fre'
 		}
 		$ProductVersion = (Get-item .\ntoskrnl.exe).VersionInfo.ProductVersion
-		Remove-item -force .\ntoskrnl.exe -force
+		Remove-item -force .\ntoskrnl.exe
 	}
 		
 	$result.MajorVersion = $ProductVersion.split('.')[0]
@@ -567,7 +567,7 @@ function Get-InfosFromESD(
 		Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
 	}
 	& 'reg' unload HKLM\RenameISOs | out-null
-	Remove-item -force .\config\ -recurse -force
+	Remove-item -force .\config\ -recurse
 		
 	# Defining if server or client thanks to Microsoft including 'server' in the server sku names
 	if (($WIMInfo.header.ImageCount -gt 4) -and (($WIMInfo[4].EditionID) -eq $null)) {
@@ -606,7 +606,7 @@ function Get-InfosFromESD(
 				$result.Licensing = $content[$counter]
 			}
 		}
-		Remove-item -force ".\ei.cfg" -force
+		Remove-item -force ".\ei.cfg"
 	}
 		
 	if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
@@ -616,7 +616,7 @@ function Get-InfosFromESD(
 	& $wimlib extract $ESD[0] 1 sources\lang.ini --nullglob --no-acls | out-null
 	Get-Content ('lang.ini') | foreach-object -begin {$h=@()} -process { $k = [regex]::split($_,'`r`n'); if(($k[0].CompareTo("") -ne 0)) { $h += $k[0] } }
 	$result.LanguageCode = ($h[((0..($h.Count - 1) | Where { $h[$_] -eq '[Available UI Languages]' }) + 1)]).split('=')[0].Trim()
-	Remove-item -force lang.ini -force
+	Remove-item -force lang.ini
 	
 	$tag = 'ir3'
 	$DVD = 'DV9'
