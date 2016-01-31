@@ -530,7 +530,7 @@ function Get-InfosFromESD(
 			$result.BuildType = 'fre'
 		}
 		$ProductVersion = (Get-item .\ntkrnlmp.exe).VersionInfo.ProductVersion
-		remove-item .\ntkrnlmp.exe -force
+		Remove-item -force .\ntkrnlmp.exe -force
 	} elseif (Test-Path .\ntoskrnl.exe) {
 		$result.CompileDate = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')', '')
 		$result.BranchName = (Get-item .\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
@@ -540,7 +540,7 @@ function Get-InfosFromESD(
 			$result.BuildType = 'fre'
 		}
 		$ProductVersion = (Get-item .\ntoskrnl.exe).VersionInfo.ProductVersion
-		remove-item .\ntoskrnl.exe -force
+		Remove-item -force .\ntoskrnl.exe -force
 	}
 		
 	$result.MajorVersion = $ProductVersion.split('.')[0]
@@ -567,7 +567,7 @@ function Get-InfosFromESD(
 		Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
 	}
 	& 'reg' unload HKLM\RenameISOs | out-null
-	remove-item .\config\ -recurse -force
+	Remove-item -force .\config\ -recurse -force
 		
 	# Defining if server or client thanks to Microsoft including 'server' in the server sku names
 	if (($WIMInfo.header.ImageCount -gt 4) -and (($WIMInfo[4].EditionID) -eq $null)) {
@@ -606,7 +606,7 @@ function Get-InfosFromESD(
 				$result.Licensing = $content[$counter]
 			}
 		}
-		Remove-Item ".\ei.cfg" -force
+		Remove-item -force ".\ei.cfg" -force
 	}
 		
 	if (($WIMInfo.header.ImageCount -eq 7) -and ($result.Type -eq 'server')) {
@@ -616,7 +616,7 @@ function Get-InfosFromESD(
 	& $wimlib extract $ESD[0] 1 sources\lang.ini --nullglob --no-acls | out-null
 	Get-Content ('lang.ini') | foreach-object -begin {$h=@()} -process { $k = [regex]::split($_,'`r`n'); if(($k[0].CompareTo("") -ne 0)) { $h += $k[0] } }
 	$result.LanguageCode = ($h[((0..($h.Count - 1) | Where { $h[$_] -eq '[Available UI Languages]' }) + 1)]).split('=')[0].Trim()
-	remove-item lang.ini -force
+	Remove-item -force lang.ini -force
 	
 	$tag = 'ir3'
 	$DVD = 'DV9'
@@ -818,7 +818,7 @@ function Convert-ESD (
 			if ($LASTEXITCODE -ne 0) {
 				Write-Host 'Error! ' $LASTEXITCODE
 				foreach ($esdfile in $DeleteESD) {
-					Remove-Item $esdfile
+					Remove-item -force $esdfile
 				}
 				return
 			}
@@ -849,7 +849,7 @@ function Convert-ESD (
 	Write-Progress -Activity ('Creating Setup Media Layout...') -Complete
 	
 	Output ([out.level] 'Info') 'Deleting MediaMeta.xml file...'
-	Remove-Item .\Media\MediaMeta.xml
+	Remove-item -force .\Media\MediaMeta.xml
 	Output ([out.level] 'Info') 'Creating bootable setup image...'
 	
 	$sw = [System.Diagnostics.Stopwatch]::StartNew();
@@ -991,9 +991,9 @@ function Convert-ESD (
 	
 	Write-Host ''
 	Output ([out.level] 'Info') 'Removing Temporary Directories and Files...'
-    Remove-Item -recurse .\Media
+    Remove-item -force -recurse .\Media
 	foreach ($esdfile in $DeleteESD) {
-		Remove-Item $esdfile
+		Remove-item -force $esdfile
 	}
 }
 
