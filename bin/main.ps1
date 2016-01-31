@@ -694,9 +694,9 @@ Function global:prepforconvert (
 	Process {
 		Update-Window ESD_ToolKit Icon "$(Get-ScriptDirectory)\icon.ico"
 		if ($CryptoKey -ne $null) {
-			$result = (decrypt-ESDs -Backup $false -ESD $esdfiles -RSAKey $CryptoKey)
+			$result = (decrypt-ESDs -Backup $true -ESD $esdfiles -RSAKey $CryptoKey)
 		} else {
-			$result = (decrypt-ESDs -Backup $false -ESD $esdfiles)
+			$result = (decrypt-ESDs -Backup $true -ESD $esdfiles)
 		}
 		[array]$esdinfos = @()
 		if ($result -is [system.array]) {
