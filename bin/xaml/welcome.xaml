@@ -10,7 +10,8 @@
 		<StackPanel>
        <Rectangle Height="562" Width="716" Stroke="White" Opacity="0.20">
         <Rectangle.Fill>
-          <VisualBrush Viewport="0,0,47.5,30" ViewportUnits="Absolute" TileMode="Tile"> <VisualBrush.Visual> <StackPanel Background="Transparent"> <TextBlock FontSize="10pt" Margin="1" Foreground="White" Text="BETA"/> </StackPanel> </VisualBrush.Visual> <VisualBrush.Transform> <RotateTransform Angle="-45" CenterX="0.5" CenterY="0.5" /> </VisualBrush.Transform> </VisualBrush>
+          <VisualBrush Viewport="0,0,150.5,60" ViewportUnits="Absolute" TileMode="Tile"> <VisualBrush.Visual> <StackPanel Background="Transparent"> <TextBlock FontSize="10pt" Margin="1" Foreground="White" Text="MARCH PREVIEW"/> <TextBlock FontSize="10pt" Margin="1" Foreground="White" Text=" PREVIEW MARCH"/> </StackPanel>  </VisualBrush.Visual> <VisualBrush.Transform> 
+          <RotateTransform Angle="-45" CenterX="0.5" CenterY="0.5" /> </VisualBrush.Transform> </VisualBrush>
         </Rectangle.Fill>
       </Rectangle>
     </StackPanel>
