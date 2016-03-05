@@ -1232,9 +1232,9 @@ Please Select which ESD you want to Convert
 			}
 		} else {
 			if ($CustomKey -eq $true) {
-				start-job -scriptblock {Convert-ESD -CryptoKey $key -extensiontype $extensiontype -ESD $selected -Destination $CustomPath}
+				Convert-ESD -CryptoKey $key -extensiontype $extensiontype -ESD $selected -Destination $CustomPath
 			} else {
-				start-job -scriptblock {Convert-ESD -extensiontype $extensiontype -ESD $selected -Destination $CustomPath}
+				Convert-ESD -extensiontype $extensiontype -ESD $selected -Destination $CustomPath
 			}
 		}
 	} else {
