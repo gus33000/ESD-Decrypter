@@ -616,7 +616,7 @@ function global:Get-InfosFromESD (
 	
 	if ($esdinformations.count -eq 1) {
 		$DVDLabel = $esdinformations[0].VolumeLabel
-	} elseif ($esdinformations.count -eq 2 -and $esdinformations[0].Editions -eq "Core" -and $esdinformations[1].Editions -eq "Professional" -and $parts -eq 1) {
+	} elseif ($esdinformations.count -eq 2 -and $esdinformations[0].Editions -eq "Professional" -and $esdinformations[1].Editions -eq "Core" -and $parts -eq 1) {
 		$DVDLabel = ($tag+'_CCSA_'+$arch+$ltag+$esdinformations[0].LanguageCode+'_'+$DVD).ToUpper()
 	} else {
 		$DVDLabel = "ESD-ISO"
