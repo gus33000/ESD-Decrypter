@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param (
 	[ValidateScript({($_ -ge 0) -and ($_ -le 3)})]
 	[int] $Scheme = 0,
@@ -983,8 +983,8 @@ function Convert-ESD (
 	Output ([out.level] 'Info') 'Generating ISO...'
 	
 	$BootData='2#p0,e,bMedia\boot\etfsboot.com#pEF,e,bMedia\efi\Microsoft\boot\efisys.bin'
-	& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($ISOInfos.VolumeLabel)" ".\Media" """$($Destination)\$($ISOInfos.FileName)"""<#  | ForEach-Object -Process {
-		if ($count -eq 11) {Write-Host ''}
+	& "cmd" "/c" ".\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-m" "-u2" "-udfver102" "-t$timestamp" "-l$($ISOInfos.VolumeLabel)" ".\Media" """$($Destination)\$($ISOInfos.FileName)"""<#  | ForEach-Object -Process {
+	if ($count -eq 11) {Write-Host ''}
 		if ($count -eq 30) {Write-Host ''}
 		$count++
 	} #>
