@@ -31,10 +31,6 @@ RenameISOs.bat launches the Rename ISOs tool which will rename all Windows Build
 
 ISORebuilder.bat launches the ISO Rebuilder tool, which allows you to build a MS-like iso from a folder, works with Windows 10 only atm.
 
-## Note:
-
-The Source code for esddecrypt made by qad in this repo hasn't been updated to reflect the changes made for 14361+ Consider it as for educational purposes only.
-
 ### Credit for the original script and the tools used:
 
 abbodi1406 for the original script
@@ -48,3 +44,5 @@ murphy78 - original script
 nosferati87, NiFu, s1ave77, and any other MDL forums members contributed in the ESD project
 
 @tfwboredom - updated esddecrypt for 14361+ esds
+
+https://github.com/hounsell/DecryptESD - DecryptESD Program made by Thomas Hounsell

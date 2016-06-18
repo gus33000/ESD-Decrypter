@@ -814,7 +814,11 @@ function Convert-ESD (
 			Output ([out.level] 'Info') 'Copying ESD File...'
 			Copy-File $esdfile $TempESD
 			Output ([out.level] 'Info') 'Decrypting ESD File...'
-			& ".\bin\esddecrypt.exe" "$($TempESD)" "$($CryptoKey)"
+			if ($CryptoKey -eq $null) {
+				& ".\bin\DecryptESD.exe" "-f" "$($TempESD)"
+			} else {
+				& ".\bin\DecryptESD.exe" "-f" "$($TempESD)" "-k" "$($CryptoKey)"
+			}
 			if ($LASTEXITCODE -ne 0) {
 				Write-Host 'Error! ' $LASTEXITCODE
 				foreach ($esdfile in $DeleteESD) {

@@ -160,7 +160,11 @@ function Convert-ESDs (
 				$tempesd = ($esdfile+'.mod')
 			}
 			$ESDs += $tempesd
-			& ".\bin\esddecrypt.exe" "$($tempesd)" "$($RSAKey)"
+			if ($RSAKey -eq $null) {
+				& ".\bin\DecryptESD.exe" "-f" "$($tempesd)"
+			} else {
+				& ".\bin\DecryptESD.exe" "-f" "$($tempesd)" "-k" "$($RSAKey)"
+			}
 			if ($LASTEXITCODE -ne 0) {
 				if ($Backup) {
 					foreach ($bakesd in $BackedUpESDs) {
