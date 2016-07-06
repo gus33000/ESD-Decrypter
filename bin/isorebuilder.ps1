@@ -38,11 +38,11 @@ function Test-Win32 {
 }
 
 if (Test-Wow64) {
-  $wimlib = "$($ScriptDir)\bin\wimlib-imagex.exe"
+  $wimlib = "$($ScriptDir)\wimlib-imagex.exe"
 } elseif (Test-Win64) {
-  $wimlib = "$($ScriptDir)\bin\bin64\wimlib-imagex.exe"
+  $wimlib = "$($ScriptDir)\bin64\wimlib-imagex.exe"
 } elseif (Test-Win32) {
-  $wimlib = "$($ScriptDir)\bin\wimlib-imagex.exe"
+  $wimlib = "$($ScriptDir)\wimlib-imagex.exe"
 } else {
   return
 }
@@ -538,5 +538,5 @@ $choice=$host.ui.PromptForChoice($title, $message, $options, 1)
 if ($choice -eq 0) {
 	Write-Host 'Generating ISO...'
 	$BootData="2#p0,e,b$($SourcePath)\boot\etfsboot.com#pEF,e,b$($SourcePath)\efi\Microsoft\boot\efisys.bin"
-	& "cmd" "/c" "$($ScriptDir)\bin\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$($results.timestamp)" "-l$($results.VolumeLabel)" "$($SourcePath)\" """$($Destination)\$($results.FileName)"""
+	& "cmd" "/c" "$($ScriptDir)\cdimage.exe" "-bootdata:$BootData" "-o" "-h" "-m" "-u2" "-udfver102" "-t$($results.timestamp)" "-l$($results.VolumeLabel)" "$($SourcePath)\" """$($Destination)\$($results.FileName)"""
 }

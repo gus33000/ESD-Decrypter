@@ -458,6 +458,7 @@ function Get-InfosFromESD (
 			if ($WIMInfo[4].EditionID -eq 'EnterpriseN') {$DVDLabel = ($tag+'_CENNA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
 			if ($WIMInfo[4].EditionID -eq 'EnterpriseS') {$DVDLabel = ($tag+'_CES_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
 			if ($WIMInfo[4].EditionID -eq 'EnterpriseSN') {$DVDLabel = ($tag+'_CESN_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
+			if ($WIMInfo[4].EditionID -eq 'PPIPro') {$DVDLabel = ($tag+'_CPPA_'+$arch+$ltag+$WIMInfo[4].DefaultLanguage+'_'+$DVD).ToUpper()}
 		}
 		
 		$result.VolumeLabel = $DVDLabel

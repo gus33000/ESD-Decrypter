@@ -3,6 +3,9 @@ param (
 	[ValidateScript({($_ -ge 0) -and ($_ -le 3)})]
 	[int] $Scheme = 0,
 	[switch] $addLabel,
+	[switch] $mkCSV,
+	[switch] $noMove,
+	[string] $unknowndir = ".\unknown",
 	[ValidateNotNullOrEmpty()]  
     [ValidateScript({(Test-Path $_)})] 
 	[parameter(Mandatory=$false,HelpMessage="The place where the ISOs are")]
@@ -38,13 +41,18 @@ foreach ($item in (dir $Path -Filter *.iso | % {$_})) {
 	$counter_ += 1
 	Write-Host ('Checking item '+$counter_+' of '+$counter+'...')
 	
-	$filename = get-BetterISOFilename($item)
-	if ($filename -eq $null) {
-		if (-not (Test-Path ('.\unknown'))) {
-			mkdir '.\unknown' | out-null
+	$results = get-BetterISOFilename($item)
+	
+	$filename = $results[0]
+
+	if (-not ($noMove)) {
+		if ($filename -eq $null) {
+			if (-not (Test-Path ($unknowndir))) {
+				mkdir $unknowndir | out-null
+			}
+			Move-item $item.fullname $unknowndir
+			Continue
 		}
-		Move-item $item.fullname .\unknown
-		Continue
 	}
 	if ($filename -ne $item) {
 		# Ask for an alt filename if it already exist at the root, we assume here that the user will not rename it to the same one, or it will throw
@@ -56,8 +64,35 @@ foreach ($item in (dir $Path -Filter *.iso | % {$_})) {
 		Write-Host "Renaming $($item) to $($filename)..."
 		$dest = $path.toString()+'\'+$filename
 		Move-Item -literalpath "$($item.fullname)" -destination "$($dest)"
+		if ($mkCSV) {
+			$editionstr = ""
+			
+			foreach ($edition in $results[1].Editions) {
+				if ($editionstr -eq "") {
+					$editionstr = $edition
+				} else {
+					$editionstr = $editionstr+"-"+$edition
+				}
+			}
+			"MajorVersion,MinorVersion,BuildNumber,DeltaVersion,BranchName,CompileDate,Tag,Architecture,BuildType,Type,Sku,Editions,Licensing,LanguageCode,VolumeLabel,BuildString" > ($path.toString()+'\'+$filename+'.csv')
+			
+			($results[1].MajorVersion+","+$results[1].MinorVersion+","+$results[1].BuildNumber+","+$results[1].DeltaVersion+","+$results[1].BranchName+","+$results[1].CompileDate+","+$results[1].Tag+","+$results[1].Architecture+","+$results[1].BuildType+","+$results[1].Type+","+$results[1].Sku+","+$editionstr+","+$results[1].Licensing+","+$results[1].LanguageCode+","+$results[1].VolumeLabel+","+$results[1].BuildString) >> ($dest+'.csv')
+		}
 	} else {
 		Write-Host "Filename is already good."
+		if ($mkCSV) {
+			$editionstr = ""
+			
+			foreach ($edition in $results[1].Editions) {
+				if ($editionstr -eq "") {
+					$editionstr = $edition
+				} else {
+					$editionstr = $editionstr+"-"+$edition
+				}
+			}
+			"MajorVersion,MinorVersion,BuildNumber,DeltaVersion,BranchName,CompileDate,Tag,Architecture,BuildType,Type,Sku,Editions,Licensing,LanguageCode,VolumeLabel,BuildString" > ($path.toString()+'\'+$filename+'.csv')
+			($results[1].MajorVersion+","+$results[1].MinorVersion+","+$results[1].BuildNumber+","+$results[1].DeltaVersion+","+$results[1].BranchName+","+$results[1].CompileDate+","+$results[1].Tag+","+$results[1].Architecture+","+$results[1].BuildType+","+$results[1].Type+","+$results[1].Sku+","+$editionstr+","+$results[1].Licensing+","+$results[1].LanguageCode+","+$results[1].VolumeLabel+","+$results[1].BuildString) >> ($path.toString()+'\'+$filename+'.csv')
+		}
 	}
 }
 

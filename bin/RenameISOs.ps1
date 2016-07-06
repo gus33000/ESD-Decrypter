@@ -399,6 +399,83 @@ function ISO-identify ($isofile) {
 		  $result.Sku = $null
 		}
 	}
+	
+	if ($result.Sku -eq "unstaged") {
+		$server = $false
+		$client = $false
+		
+		$skus = @()
+		
+		$unstagedskus = (& 'bin\7z' l -i!packages\*sku*\Security-Licensing-SLC-Component-SKU*pl*xrm* $letter\sources\install.wim) | % { if ($_ -like '*Security-Licensing-SLC-Component-SKU*pl*xrm*') { $_.split(' \')[-2].split('-')[-1].split('_')[0] } } | Select -uniq
+		if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+				foreach ($sku in $unstagedskus) {
+					if ($sku -like '*server*') {
+						$server = $true
+					} else {
+						$client = $true
+					}
+					$skus+=$sku
+				}
+				
+				$result.Editions = $skus
+				
+				if ($client) {
+					$result.Type = 'client'
+					if ($server) {
+						$result.Type = 'client-server'
+					}
+				} elseif ($server) {
+					$result.Type = 'server'
+				}
+		} else {
+			$unstagedskus = (& 'bin\7z' l -i!packages\*\update* $letter\sources\install.wim) | % { if ($_ -like '*update.mum*') { $_.split(' \')[-2] } }
+			if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+				foreach ($sku in $unstagedskus) {
+					if ($sku -like '*server*') {
+						$server = $true
+					} else {
+						$client = $true
+					}
+					$skus+=$sku
+				}
+				
+				$result.Editions = $skus
+				
+				if ($client) {
+					$result.Type = 'client'
+					if ($server) {
+						$result.Type = 'client-server'
+					}
+				} elseif ($server) {
+					$result.Type = 'server'
+				}
+			} else {
+				$unstagedskus = (& 'bin\7z' l -i!vlpackages\*\update* $letter\sources\install.wim) | % { if ($_ -like '*update.mum*') { $_.split(' \')[-2] } }
+				if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+					foreach ($sku in $unstagedskus) {
+						if ($sku -like '*server*') {
+							$server = $true
+						} else {
+							$client = $true
+						}
+						$skus+=$sku
+					}
+					
+					$result.Editions = $skus
+					
+					if ($client) {
+						$result.Type = 'client'
+						if ($server) {
+							$result.Type = 'client-server'
+						}
+					} elseif ($server) {
+						$result.Type = 'server'
+					}
+				}
+			}
+		}
+		
+	}
 
     if (Test-Path "$($letter)\sources\ei.cfg") {
       $content = @()
@@ -513,89 +590,244 @@ function ISO-identify ($isofile) {
     $result.Editions = $result.Sku
 
     (& 'bin\7z' l -i!*\ntldr $letter\sources\install.wim) | % { if ($_ -like '*ntldr*') { $wimindex = $_.split(' \')[-2] } }
+	
+	if ($wimindex -match "^[-]?[0-9.]+$") {
+		# Gathering Compiledate and the buildbranch from the ntoskrnl executable.
+		Write-Host 'Checking critical system files for a build string and build type information...'
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntkrnlmp.exe" | Out-Null
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntoskrnl.exe" | Out-Null
+		if (Test-Path .\$wimindex\windows\system32\ntkrnlmp.exe) {
+		  $result.CompileDate = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
+		  $result.BranchName = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+		  if ((Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.IsDebug) {
+			$result.BuildType = 'chk'
+		  } else {
+			$result.BuildType = 'fre'
+		  }
+		  $ProductVersion = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.ProductVersion
+		  Remove-Item .\$wimindex\windows\system32\ntkrnlmp.exe -Force
+		} elseif (Test-Path .\$wimindex\windows\system32\ntoskrnl.exe) {
+		  $result.CompileDate = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
+		  $result.BranchName = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+		  if ((Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.IsDebug) {
+			$result.BuildType = 'chk'
+		  } else {
+			$result.BuildType = 'fre'
+		  }
+		  $ProductVersion = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.ProductVersion
+		  Remove-Item .\$wimindex\windows\system32\ntoskrnl.exe -Force
+		}
 
-    # Gathering Compiledate and the buildbranch from the ntoskrnl executable.
-    Write-Host 'Checking critical system files for a build string and build type information...'
-    & 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntkrnlmp.exe" | Out-Null
-    & 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\ntoskrnl.exe" | Out-Null
-    if (Test-Path .\$wimindex\windows\system32\ntkrnlmp.exe) {
-      $result.CompileDate = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
-      $result.BranchName = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
-      if ((Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.IsDebug) {
-        $result.BuildType = 'chk'
-      } else {
-        $result.BuildType = 'fre'
-      }
-      $ProductVersion = (Get-Item .\$wimindex\windows\system32\ntkrnlmp.exe).VersionInfo.ProductVersion
-      Remove-Item .\$wimindex\windows\system32\ntkrnlmp.exe -Force
-    } elseif (Test-Path .\$wimindex\windows\system32\ntoskrnl.exe) {
-      $result.CompileDate = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
-      $result.BranchName = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
-      if ((Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.IsDebug) {
-        $result.BuildType = 'chk'
-      } else {
-        $result.BuildType = 'fre'
-      }
-      $ProductVersion = (Get-Item .\$wimindex\windows\system32\ntoskrnl.exe).VersionInfo.ProductVersion
-      Remove-Item .\$wimindex\windows\system32\ntoskrnl.exe -Force
-    }
+		$result.MajorVersion = $ProductVersion.split('.')[0]
+		$result.MinorVersion = $ProductVersion.split('.')[1]
+		$result.BuildNumber = $ProductVersion.split('.')[2]
+		$result.DeltaVersion = $ProductVersion.split('.')[3]
 
-    $result.MajorVersion = $ProductVersion.split('.')[0]
-    $result.MinorVersion = $ProductVersion.split('.')[1]
-    $result.BuildNumber = $ProductVersion.split('.')[2]
-    $result.DeltaVersion = $ProductVersion.split('.')[3]
+		# Gathering Compiledate and the buildbranch from the build registry.
+		Write-Host 'Checking registry for a more accurate build string...'
+		& 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\config\" | Out-Null
+		& 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SOFTWARE | Out-Null
+		$output = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
+		if (($output -ne $null) -and ($output[2] -ne $null) -and (-not ($output[2].split(' ')[-1].split('.')[-1]) -eq '')) {
+		  $result.CompileDate = $output[2].split(' ')[-1].split('.')[-1]
+		  $result.BranchName = $output[2].split(' ')[-1].split('.')[-2]
+		  $output_ = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
+		  if (($output_[2] -ne $null) -and (-not ($output_[2].split(' ')[-1].split('.')[-1]) -eq '')) {
+			if ($output_[2].split(' ')[-1] -like '*.*.*.*.*') {
+			  $result.BuildNumber = $output_[2].split(' ')[-1].split('.')[0]
+			  $result.DeltaVersion = $output_[2].split(' ')[-1].split('.')[1]
+			}
+		  }
+		} else {
+		  Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
+		}
+		& 'reg' unload HKLM\RenameISOs | Out-Null
 
-    # Gathering Compiledate and the buildbranch from the build registry.
-    Write-Host 'Checking registry for a more accurate build string...'
-    & 'bin\7z' x $letter'\sources\install.wim' "$($wimindex)\windows\system32\config\" | Out-Null
-    & 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SOFTWARE | Out-Null
-    $output = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
-    if (($output -ne $null) -and ($output[2] -ne $null) -and (-not ($output[2].split(' ')[-1].split('.')[-1]) -eq '')) {
-      $result.CompileDate = $output[2].split(' ')[-1].split('.')[-1]
-      $result.BranchName = $output[2].split(' ')[-1].split('.')[-2]
-      $output_ = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
-      if (($output_[2] -ne $null) -and (-not ($output_[2].split(' ')[-1].split('.')[-1]) -eq '')) {
-        if ($output_[2].split(' ')[-1] -like '*.*.*.*.*') {
-          $result.BuildNumber = $output_[2].split(' ')[-1].split('.')[0]
-          $result.DeltaVersion = $output_[2].split(' ')[-1].split('.')[1]
-        }
-      }
-    } else {
-      Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
-    }
-    & 'reg' unload HKLM\RenameISOs | Out-Null
+		& 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SYSTEM | Out-Null
+		$ProductSuite = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductSuite).ProductSuite
+		$ProductType = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductType).ProductType
+		
+		if ($ProductType -eq 'ServerNT') {
+		  $result.Type = 'server'
+		} else {
+		  $result.Type = 'client'
+		}
+		
+		
 
-    & 'reg' load HKLM\RenameISOs .\$wimindex\windows\system32\config\SYSTEM | Out-Null
-    $ProductSuite = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductSuite).ProductSuite
-    $ProductType = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductType).ProductType
-    Write-Host $ProductSuite
-    Write-Host $ProductType
+		if ($ProductSuite -is [System.Array]) {
+		  if ($ProductSuite[0] -ne '') {
+			$result.Sku = $ProductSuite[0]
+		  } else {
+			$result.Sku = 'Professional'
+		  }
+		} elseif ($ProductSuite -ne '') {
+		  $result.Sku = $ProductSuite
+		} else {
+		  $result.Sku = 'Professional'
+		}
+		$result.Editions = $result.Sku
 
-    if ($ProductType -eq 'ServerNT') {
-      $result.Type = 'server'
-    } else {
-      $result.Type = 'client'
-    }
+		& 'reg' unload HKLM\RenameISOs | Out-Null
 
-    if ($ProductSuite -is [System.Array]) {
-      if ($ProductSuite[0] -ne '') {
-        $result.Sku = $ProductSuite[0]
-      } else {
-        $result.Sku = 'Professional'
-      }
-    } elseif ($ProductSuite -ne '') {
-      $result.Sku = $ProductSuite
-    } else {
-      $result.Sku = 'Professional'
-    }
-    $result.Editions = $result.Sku
+		Remove-Item .\$wimindex\windows\system32\config\ -Recurse -Force
 
-    & 'reg' unload HKLM\RenameISOs | Out-Null
+		Remove-Item .\$wimindex\ -Recurse -Force
+	} else {
+		# Gathering Compiledate and the buildbranch from the ntoskrnl executable.
+		Write-Host 'Checking critical system files for a build string and build type information...'
+		& 'bin\7z' x $letter'\sources\install.wim' "windows\system32\ntkrnlmp.exe" | Out-Null
+		& 'bin\7z' x $letter'\sources\install.wim' "windows\system32\ntoskrnl.exe" | Out-Null
+		if (Test-Path .\windows\system32\ntkrnlmp.exe) {
+		  $result.CompileDate = (Get-Item .\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
+		  $result.BranchName = (Get-Item .\windows\system32\ntkrnlmp.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+		  if ((Get-Item .\windows\system32\ntkrnlmp.exe).VersionInfo.IsDebug) {
+			$result.BuildType = 'chk'
+		  } else {
+			$result.BuildType = 'fre'
+		  }
+		  $ProductVersion = (Get-Item .\windows\system32\ntkrnlmp.exe).VersionInfo.ProductVersion
+		  Remove-Item .\windows\system32\ntkrnlmp.exe -Force
+		} elseif (Test-Path .\windows\system32\ntoskrnl.exe) {
+		  $result.CompileDate = (Get-Item .\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[1].replace(')','')
+		  $result.BranchName = (Get-Item .\windows\system32\ntoskrnl.exe).VersionInfo.FileVersion.split(' ')[1].split('.')[0].Substring(1)
+		  if ((Get-Item .\windows\system32\ntoskrnl.exe).VersionInfo.IsDebug) {
+			$result.BuildType = 'chk'
+		  } else {
+			$result.BuildType = 'fre'
+		  }
+		  $ProductVersion = (Get-Item .\windows\system32\ntoskrnl.exe).VersionInfo.ProductVersion
+		  Remove-Item .\windows\system32\ntoskrnl.exe -Force
+		}
 
-    Remove-Item .\$wimindex\windows\system32\config\ -Recurse -Force
+		$result.MajorVersion = $ProductVersion.split('.')[0]
+		$result.MinorVersion = $ProductVersion.split('.')[1]
+		$result.BuildNumber = $ProductVersion.split('.')[2]
+		$result.DeltaVersion = $ProductVersion.split('.')[3]
 
-    Remove-Item .\$wimindex\ -Recurse -Force
+		# Gathering Compiledate and the buildbranch from the build registry.
+		Write-Host 'Checking registry for a more accurate build string...'
+		& 'bin\7z' x $letter'\sources\install.wim' "windows\system32\config\" | Out-Null
+		& 'reg' load HKLM\RenameISOs .\windows\system32\config\SOFTWARE | Out-Null
+		$output = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLab")
+		if (($output -ne $null) -and ($output[2] -ne $null) -and (-not ($output[2].split(' ')[-1].split('.')[-1]) -eq '')) {
+		  $result.CompileDate = $output[2].split(' ')[-1].split('.')[-1]
+		  $result.BranchName = $output[2].split(' ')[-1].split('.')[-2]
+		  $output_ = (& 'reg' query "HKLM\RenameISOs\Microsoft\Windows NT\CurrentVersion" /v "BuildLabEx")
+		  if (($output_[2] -ne $null) -and (-not ($output_[2].split(' ')[-1].split('.')[-1]) -eq '')) {
+			if ($output_[2].split(' ')[-1] -like '*.*.*.*.*') {
+			  $result.BuildNumber = $output_[2].split(' ')[-1].split('.')[0]
+			  $result.DeltaVersion = $output_[2].split(' ')[-1].split('.')[1]
+			}
+		  }
+		} else {
+		  Write-Host 'Registry check was unsuccessful. Aborting and continuing with critical system files build string...'
+		}
+		& 'reg' unload HKLM\RenameISOs | Out-Null
 
+		& 'reg' load HKLM\RenameISOs .\windows\system32\config\SYSTEM | Out-Null
+		$ProductSuite = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductSuite).ProductSuite
+		$ProductType = (Get-ItemProperty -Path HKLM:\RenameISOs\ControlSet001\Control\ProductOptions -Name ProductType).ProductType
+		
+		if ($ProductType -eq 'ServerNT') {
+		  $result.Type = 'server'
+		} else {
+		  $result.Type = 'client'
+		}
+
+		if ($ProductSuite -is [System.Array]) {
+		  if ($ProductSuite[0] -ne '') {
+			$result.Sku = $ProductSuite[0]
+		  } else {
+			$result.Sku = 'Professional'
+		  }
+		} elseif ($ProductSuite -ne '') {
+		  $result.Sku = $ProductSuite
+		} else {
+		  $result.Sku = 'Professional'
+		}
+		$result.Editions = $result.Sku
+		
+		$server = $false
+		$client = $false
+		
+		$skus = @()
+		
+		$unstagedskus = (& 'bin\7z' l -i!packages\*sku*\Security-Licensing-SLC-Component-SKU*pl*xrm* $letter\sources\install.wim) | % { if ($_ -like '*Security-Licensing-SLC-Component-SKU*pl*xrm*') { $_.split(' \')[-2].split('-')[-1].split('_')[0] } } | Select -uniq
+		if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+				foreach ($sku in $unstagedskus) {
+					if ($sku -like '*server*') {
+						$server = $true
+					} else {
+						$client = $true
+					}
+					$skus+=$sku
+				}
+				
+				$result.Editions = $skus
+				
+				if ($client) {
+					$result.Type = 'client'
+					if ($server) {
+						$result.Type = 'client-server'
+					}
+				} elseif ($server) {
+					$result.Type = 'server'
+				}
+		} else {
+			$unstagedskus = (& 'bin\7z' l -i!packages\*\update* $letter\sources\install.wim) | % { if ($_ -like '*update.mum*') { $_.split(' \')[-2] } }
+			if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+				foreach ($sku in $unstagedskus) {
+					if ($sku -like '*server*') {
+						$server = $true
+					} else {
+						$client = $true
+					}
+					$skus+=$sku
+				}
+				
+				$result.Editions = $skus
+				
+				if ($client) {
+					$result.Type = 'client'
+					if ($server) {
+						$result.Type = 'client-server'
+					}
+				} elseif ($server) {
+					$result.Type = 'server'
+				}
+			} else {
+				$unstagedskus = (& 'bin\7z' l -i!vlpackages\*\update* $letter\sources\install.wim) | % { if ($_ -like '*update.mum*') { $_.split(' \')[-2] } }
+				if (($unstagedskus -ne $null) -and ($unstagedskus -ne "")) {
+					foreach ($sku in $unstagedskus) {
+						if ($sku -like '*server*') {
+							$server = $true
+						} else {
+							$client = $true
+						}
+						$skus+=$sku
+					}
+					
+					$result.Editions = $skus
+					
+					if ($client) {
+						$result.Type = 'client'
+						if ($server) {
+							$result.Type = 'client-server'
+						}
+					} elseif ($server) {
+						$result.Type = 'server'
+					}
+				}
+			}
+		}
+
+		& 'reg' unload HKLM\RenameISOs | Out-Null
+
+		Remove-Item .\windows\system32\config\ -Recurse -Force
+
+		Remove-Item .\windows -Recurse -Force
+	}
 
     Write-Host "Dismounting $($isofile)..."
     Get-DiskImage -ImagePath $isofile.fullname | Dismount-DiskImage
@@ -993,6 +1225,6 @@ function get-BetterISOFilename ($item) {
     }
   }
   Write-Host "Found: $($filename)"
-  return $filename
+  return $filename,$results
 }
 
