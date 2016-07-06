@@ -318,7 +318,7 @@ function Get-InfosFromSetupPath (
     if ($WIMInfo[1].EditionID -eq 'EnterpriseN') { $DVDLabel = ($tag + '_CENNA_' + $arch + $ltag + $WIMInfo[1].DefaultLanguage + '_' + $DVD).ToUpper() }
     if ($WIMInfo[1].EditionID -eq 'EnterpriseS') { $DVDLabel = ($tag + '_CES_' + $arch + $ltag + $WIMInfo[1].DefaultLanguage + '_' + $DVD).ToUpper() }
     if ($WIMInfo[1].EditionID -eq 'EnterpriseSN') { $DVDLabel = ($tag + '_CESN_' + $arch + $ltag + $WIMInfo[1].DefaultLanguage + '_' + $DVD).ToUpper() }
-	if ($WIMInfo[1].EditionID -eq 'PPIPro') { $DVDLabel = ($tag + '_CPPA_' + $arch + $ltag + $WIMInfo[1].DefaultLanguage + '_' + $DVD).ToUpper() }
+	if ($WIMInfo[1].EditionID -eq 'PPIPro') { $DVDLabel = ($tag + '_CPPIA_' + $arch + $ltag + $WIMInfo[1].DefaultLanguage + '_' + $DVD).ToUpper() }
   }
 
   $result.VolumeLabel = $DVDLabel
