@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<versioninfo>
+   <version buildstring="4.0.0.0.fbl_prerelease(gustavem).160815-0800" version="4.0.0.0" minau="0.0.0.1"/>
+   <branding title="GusTools August Preview #0" copyright="Gustave M. (gus33000) (c) 2014-2016"/>
+   <changelog title="Test Update 1 - A new autoupdate system">
+This update is to test the brand new auto update system.
+   </changelog>
+   <download url=""/>
+</versioninfo>
